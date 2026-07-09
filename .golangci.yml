@@ -1,5 +1,4 @@
 # golangci-lint configuration used for CI
-version: "1"
 
 run:
   tests: true

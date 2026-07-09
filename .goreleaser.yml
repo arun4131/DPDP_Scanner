@@ -1,8 +1,13 @@
+version: 2
+
+project_name: dpdpscanner
+
 builds:
-  - main: ./cmd/ciscollector
-    binary: ciscollector
+  - id: cli
+    main: ./cmd/dpdpscanner
+    binary: dpdpscanner
     ldflags:
-      - -s -w -X 'github.com/klouddb/klouddbshield/pkg/config.Version={{.Version}}'
+      - -s -w
     goos:
       - darwin
       - linux
@@ -11,38 +16,60 @@ builds:
       - arm64
     env:
       - CGO_ENABLED=0
-project_name: ciscollector
-release:
-  prerelease: auto
+
+  - id: server
+    main: ./cmd/server
+    binary: dpdpscanner-server
+    ldflags:
+      - -s -w
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
 
 universal_binaries:
-  - replace: true
+  - id: cli-universal
+    ids: [cli]
+    replace: true
+  - id: server-universal
+    ids: [server]
+    replace: true
 
 checksum:
   name_template: 'checksums.txt'
+
+release:
+  prerelease: auto
+
+archives:
+  - id: cli-archive
+    ids: [cli, cli-universal]
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - conf.example.toml
+      - benchmark/README.md
+      - benchmark/demo_schema.sql
+
 nfpms:
-  -
-    file_name_template: "ciscollector_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    vendor: Klouddb
-    package_name: ciscollector
-    homepage: https://github.com/klouddb/collector
-    maintainer: Klouddb <klouddb@gmail.com>
-    description: CIS Collecotr
+  - id: packages
+    ids: [cli]
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: KloudDB
+    package_name: dpdpscanner
+    homepage: https://github.com/klouddb/DPA_private
+    maintainer: KloudDB <klouddb@gmail.com>
+    description: India DPDP Act 2023 PII Scanner for PostgreSQL
     license: BSD 3-Clause
     formats:
       - deb
       - rpm
     contents:
-      # Basic file that applies to all packagers
-      - src: kshieldconfig_example.toml
-        dst: /etc/klouddbshield/kshieldconfig.toml
-        type: config
-      - src: passwords/*
-        dst: /etc/klouddbshield/passwords
-        type: config
-      # Simple config file
-      - src: systemd.service
-        dst: /lib/systemd/system/ciscollector.service
-      - src: python/*
-        dst: /etc/klouddbshield/python
+      - src: conf.example.toml
+        dst: /etc/dpdpscanner/config.toml
         type: config

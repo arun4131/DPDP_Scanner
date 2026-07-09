@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DPA PII Scanner</title>
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/pii.css" />
+</head>
+
+<body>
+    <div class="content">
+        <section id="page-pii-scanner" class="page active" style="max-width:1400px; margin:0 auto;">
+
+            <div
+                style="display:flex; align-items:flex-start; gap:10px; margin-bottom:-25px; margin-top: -15px; margin-left: -25px;">
+                <img src="assets/kloulddb_shield_logo.png" alt="KloudDB"
+                    style="height:150px; width:auto; margin-top:4px;" />
+                <div>
+                    <h1 style="font-size:35px ; margin-bottom:-2px; margin-top:50px;">Postgres PII Report</h1>
+                    <p class="subtitle" style="font-size:15px ;margin-bottom:0;">PII results from the DPA scanner</p>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+                <button id="pii-refresh-btn"
+                    style="padding:8px 16px;border-radius:6px;border:1px solid var(--kloud-blue);background:var(--kloud-blue-soft);color:var(--kloud-blue);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;">↻
+                    Refresh</button>
+            </div>
+
+            <div class="pii-host-toolbar" id="pii-target-toolbar">
+                <div class="pii-target-field">
+                    <label for="pii-instance-select">PostgreSQL Instance</label>
+                    <input id="pii-instance-select" class="pii-target-select" type="text" placeholder="e.g. localhost:5432" />
+                </div>
+                <div class="pii-target-field">
+                    <label for="pii-database-select">Database</label>
+                    <input id="pii-database-select" class="pii-target-select" type="text" placeholder="e.g. mydb" />
+                </div>
+                <div class="pii-target-field">
+                    <label for="pii-pg-user">User</label>
+                    <input id="pii-pg-user" class="pii-target-select" type="text" value="postgres"
+                        placeholder="postgres" />
+                </div>
+                <div class="pii-target-field">
+                    <label for="pii-pg-password">Password</label>
+                    <input id="pii-pg-password" class="pii-target-select" type="password" placeholder="••••••••" />
+                </div>
+            </div>
+
+            <p class="callout pii-scan-callout" id="pii-scan-target">Select instance and database to view PII results.
+            </p>
+
+            <div id="pii-results-panel">
+                <div class="stats pii-results-summary" id="pii-results-summary"></div>
+
+                <article class="report-block pii-report-section" id="pii-data-scan-block" style="margin-bottom:16px;">
+                    <div class="report-block-header pii-report-section-header">
+                        <div>
+                            <h2>Data Scan Report</h2>
+                            <p>High-confidence PII detected in column values</p>
+                        </div>
+                        <span class="pii-section-badge pii-section-badge--data">Value Scan</span>
+                    </div>
+                    <div class="report-block-body pii-report-section-body">
+                        <div class="pii-table-wrap">
+                            <table class="pii-report-table">
+                                <thead>
+                                    <tr>
+                                        <th class="pii-col-table">Table</th>
+                                        <th class="pii-col-column">Column</th>
+                                        <th class="pii-col-label">Label</th>
+                                        <th class="pii-col-conf">Confidence</th>
+                                        <th class="pii-col-detector">Detector</th>
+                                        <th class="pii-col-matched">Matched</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pii-data-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="table-pagination" id="pii-data-pagination" hidden></div>
+                        <div id="pii-no-data" style="display:none;"></div>
+                    </div>
+                </article>
+
+                <article class="report-block pii-report-section" id="pii-meta-scan-block"
+                    style="display:none;margin-bottom:16px;">
+                    <div class="report-block-header pii-report-section-header">
+                        <div>
+                            <h2>Meta Scan Report</h2>
+                            <p>PII inferred from column names</p>
+                        </div>
+                        <span class="pii-section-badge pii-section-badge--meta">Meta Scan</span>
+                    </div>
+                    <div class="report-block-body pii-report-section-body">
+                        <div class="pii-table-wrap">
+                            <table class="pii-report-table">
+                                <thead>
+                                    <tr>
+                                        <th class="pii-col-table">Table</th>
+                                        <th class="pii-col-column">Column</th>
+                                        <th class="pii-col-label">Label</th>
+                                        <th class="pii-col-conf">Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pii-meta-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="table-pagination" id="pii-meta-pagination" hidden></div>
+                    </div>
+                </article>
+
+                <article class="report-block pii-report-section pii-low-conf-section" id="pii-low-conf-block"
+                    style="display:none;">
+                    <div class="report-block-header pii-report-section-header">
+                        <div>
+                            <h2>Low-Confidence Tables</h2>
+                            <p>PII-like signals below the high-confidence threshold — worth a manual review</p>
+                        </div>
+                        <span class="pii-section-badge pii-section-badge--low" id="pii-low-conf-badge">Review</span>
+                    </div>
+                    <div class="report-block-body pii-report-section-body">
+                        <div id="pii-low-conf-content"></div>
+                        <div class="table-pagination" id="pii-low-conf-pagination" hidden></div>
+                    </div>
+                </article>
+            </div>
+
+        </section>
+    </div>
+    <script type="module" src="scripts/app.js"></script>
+</body>
+
+</html>

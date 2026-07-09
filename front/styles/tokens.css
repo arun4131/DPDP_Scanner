@@ -1,0 +1,24 @@
+/* Brand tokens from https://klouddb.io/ (Elementor kit) */
+    :root {
+      --kloud-blue: #55a3d7;
+      --kloud-blue-soft: rgba(85, 163, 215, 0.12);
+      --kloud-green: #88bf57;
+      --kloud-purple-deep: #0a0316;
+      --kloud-purple: #18023a;
+      --kloud-purple-mid: #241a30;
+      --kloud-purple-card: #2b2338;
+      --kloud-border: #424a5f;
+      --kloud-slate: #556080;
+      --bg: #0f0520;
+      --surface: var(--kloud-purple-card);
+      --surface-2: var(--kloud-purple-mid);
+      --border: var(--kloud-border);
+      --text: #efefef;
+      --text-bright: #ffffff;
+      --muted: #a8b0c4;
+      --accent: var(--kloud-blue);
+      --success: var(--kloud-green);
+      --warning: #d4a84b;
+      --danger: #e85d75;
+      --sidebar-w: 200px;
+    }

@@ -11,22 +11,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klouddb/dpa/pkg/postgresdb"
-	"github.com/klouddb/dpa/piiscanner"
+	"github.com/klouddb/DPA_private/pkg/postgresdb"
+	"github.com/klouddb/DPA_private/piiscanner"
 )
 
-// ScanRequest is the JSON body for POST /api/scan
 type ScanRequest struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Database string `json:"database"`
-	Schema   string `json:"schema"`
-	RunOption string `json:"run_option"` // datascan | metascan | deepscan
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	Database  string `json:"database"`
+	Schema    string `json:"schema"`
+	RunOption string `json:"run_option"`
 }
 
-// RowResult is one row in the frontend table
 type RowResult struct {
 	Table    string `json:"table"`
 	Column   string `json:"column"`
@@ -35,7 +33,6 @@ type RowResult struct {
 	Detector string `json:"detector"`
 }
 
-// ScanResponse is returned to the frontend
 type ScanResponse struct {
 	Available bool        `json:"available"`
 	Schema    string      `json:"schema"`
@@ -88,12 +85,12 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	port, _ := strconv.Atoi(req.Port)
 
 	pgConf := postgresdb.Postgres{
-		Host:     req.Host,
-		Port:     strconv.Itoa(port),
-		User:     req.User,
-		Password: req.Password,
-		DBName:   req.Database,
-		SSLmode:  "disable",
+		Host:      req.Host,
+		Port:      strconv.Itoa(port),
+		User:      req.User,
+		Password:  req.Password,
+		DBName:    req.Database,
+		SSLmode:   "disable",
 		PingCheck: true,
 	}
 
@@ -149,7 +146,7 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for tableName, columns := range output.Data {
-		isHighConf := false
+		hasHigh := false
 		for colName, piiList := range columns {
 			for _, pii := range piiList {
 				conf := strings.ToLower(pii.Confidence)
@@ -157,32 +154,18 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 				if pii.ScanedValueCount > 0 {
 					matched = fmt.Sprintf("%d/%d", pii.MatchedCount, pii.ScanedValueCount)
 				}
-				detector := string(pii.DetectorName)
-
 				row := RowResult{
 					Table:    tableName,
 					Column:   colName,
 					Label:    string(pii.Label),
 					Matched:  matched,
-					Detector: detector,
+					Detector: pii.DetectorName,
 				}
-
 				if conf == "high" {
 					resp.Rows = append(resp.Rows, row)
-					isHighConf = true
-				} else if conf == "medium" || conf == "low" {
-					resp.Meta = append(resp.Meta, row)
-				}
-				_ = isHighConf
-			}
-		}
-
-		// Tables with no high-conf findings go to LowConf
-		hasHigh := false
-		for _, piiList := range columns {
-			for _, pii := range piiList {
-				if strings.ToLower(pii.Confidence) == "high" {
 					hasHigh = true
+				} else {
+					resp.Meta = append(resp.Meta, row)
 				}
 			}
 		}
@@ -200,7 +183,6 @@ func main() {
 		port = "8080"
 	}
 
-	// Serve frontend static files
 	fs := http.FileServer(http.Dir("./front"))
 	http.Handle("/", fs)
 	http.HandleFunc("/api/scan", handleScan)

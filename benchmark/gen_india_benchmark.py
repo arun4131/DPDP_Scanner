@@ -97,6 +97,39 @@ def gen_abha():
         f"{random.randint(1000,9999)}"
     )
 
+def gen_esic():
+    return (f"{random.randint(10,99)}-"
+            f"{random.randint(10,99)}-"
+            f"{random.randint(100000,999999)}-"
+            f"{random.randint(100,999)}-"
+            f"{random.randint(1000,9999)}")
+
+def gen_dob():
+    day = random.randint(1, 28)
+    month = random.randint(1, 12)
+    year = random.randint(1950, 2005)
+    fmt = random.choice([
+        f"{day:02d}/{month:02d}/{year}",
+        f"{day:02d}-{month:02d}-{year}",
+        f"{year}-{month:02d}-{day:02d}",
+        f"{day:02d}.{month:02d}.{year}",
+    ])
+    return fmt
+
+def gen_location():
+    # India lat/long bounds
+    lat = round(random.uniform(8.0, 37.0), 4)
+    lng = round(random.uniform(68.0, 97.0), 4)
+    return f"{lat}, {lng}"
+
+def gen_ration_card():
+    states = ['MH','DL','KA','TN','GJ','UP','WB','RJ','AP','KL','MP','HR']
+    return random.choice(states) + '-' + ''.join(random.choices('0123456789', k=random.randint(10,13)))
+
+def gen_sebi():
+    prefixes = ['INZ','INH','INP','INR','INA','INM','INQ']
+    return random.choice(prefixes) + ''.join(random.choices('0123456789', k=9))
+
 def gen_uan():
     return str(random.randint(100000000000, 999999999999))
 
@@ -213,6 +246,11 @@ GENS = {
     "ABHANumber":          gen_abha,
     "UAN":                 gen_uan,
     "EPFMemberID":         gen_epf_member_id,
+    "ESIC":                gen_esic,
+    "RationCard":          gen_ration_card,
+    "SEBIRegistration":    gen_sebi,
+    "BirthDate":           gen_dob,
+    "Location":            gen_location,
 }
 
 rows=[]

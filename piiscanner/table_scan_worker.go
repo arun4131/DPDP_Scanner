@@ -64,6 +64,11 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 				strings.Contains(column, "fastag") ||
 				strings.Contains(column, "demat") ||
 				strings.Contains(column, "cvv") ||
+				strings.Contains(column, "dob") ||
+				strings.Contains(column, "birth") ||
+				strings.Contains(column, "lat") ||
+				strings.Contains(column, "lon") ||
+				strings.Contains(column, "ration") ||
 				strings.Contains(column, "card") {
 				hasColumnContext = true
 			}

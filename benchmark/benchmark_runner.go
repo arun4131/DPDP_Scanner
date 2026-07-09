@@ -20,6 +20,9 @@ var columnContextEntities = map[string]string{
 	"FASTagID":              "fastag_id",
 	"CVV":                   "cvv",
 	"UAN":                   "uan",
+	"RationCard":            "ration_card",
+	"BirthDate":             "date_of_birth",
+	"Location":              "latitude",
 }
 
 func main() {

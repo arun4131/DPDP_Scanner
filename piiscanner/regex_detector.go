@@ -643,6 +643,27 @@ func (r *regexColumnDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
+		PIILabel_ESIC: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(esic|esic_number|esic_no|esi_number|esi_no|esic_id)([\s_-]?(no|num|number|id))?\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_RationCard: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(ration_card|ration_card_no|ration_card_number|ration_no|rc_number)([\s_-]?(no|num|number|id))?\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_SEBIRegistration: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(sebi|sebi_reg|sebi_registration|sebi_no|sebi_number|sebi_id)([\s_-]?(no|num|number|id))?\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+		},
 	}
 	r.filterByRegion(r.region)
 	return nil
@@ -988,6 +1009,47 @@ func (r *regexValueDetector) Init() error {
 			{
 				Regexp: regexp.MustCompile(`\d{1,4} [a-zA-Z0-9]{1,20}( (street|st|avenue|ave|road|rd|highway|hwy|square|sq|trail|trl|drive|dr|court|ct|park|parkway|pkwy|circle|cir|boulevard|blvd))\W?(\s|$)`),
 				Weight: 0.8,
+			},
+		},
+		PIILabel_ESIC: {
+			{
+				// ESIC: 17-digit format XX-XX-XXXXXX-XXX-XXXX
+				Regexp: regexp.MustCompile(`\b\d{2}[-\s]\d{2}[-\s]\d{6}[-\s]\d{3}[-\s]\d{4}\b`),
+				Weight: 0.9,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_RationCard: {
+			{
+				// Ration card: state code + alphanumeric
+				Regexp:                regexp.MustCompile(`(?i)^[A-Z]{2}[-/]?\d{10,15}$`),
+				Weight:                0.7,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
+			},
+		},
+		PIILabel_SEBIRegistration: {
+			{
+				// SEBI: INZ/INH/INP + 9 digits e.g. INZ000123456
+				Regexp: regexp.MustCompile(`(?i)\b(INZ|INH|INP|INR|INA|INM|INQ)\d{9}\b`),
+				Weight: 0.95,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_BirthDate: {
+			{
+				// Common date formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, DD.MM.YYYY
+				Regexp:                regexp.MustCompile(`\b(0[1-9]|[12]\d|3[01])[\/\-\.](0[1-9]|1[0-2])[\/\-\.](19|20)\d{2}\b|\b(19|20)\d{2}[\/\-\.](0[1-9]|1[0-2])[\/\-\.](0[1-9]|[12]\d|3[01])\b`),
+				Weight:                0.7,
+				RequiresColumnContext: true,
+			},
+		},
+		PIILabel_Location: {
+			{
+				// Latitude/Longitude coordinate pair: 18.9220, 72.8347
+				Regexp:                regexp.MustCompile(`^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$`),
+				Weight:                0.9,
+				RequiresColumnContext: true,
 			},
 		},
 	}

@@ -24,9 +24,9 @@ const (
 	PIILabel_TAN         PIILabel = "TAN"
 	PIILabel_CIN         PIILabel = "CIN"
 	PIILabel_MICRCode    PIILabel = "MICRCode"
-        PIILabel_ABHANumber PIILabel = "ABHANumber"
-        PIILabel_UAN PIILabel =        "UAN"
-        PIILabel_EPFMemberID PIILabel = "EPFMemberID"
+	PIILabel_ABHANumber  PIILabel = "ABHANumber"
+	PIILabel_UAN         PIILabel = "UAN"
+	PIILabel_EPFMemberID PIILabel = "EPFMemberID"
 
 	// PIILabel_BankAccountNumber is pii label for bank account number.
 	// currently we are only supporting for india and USA.
@@ -48,11 +48,9 @@ const (
 	// value regexs are clash with phone number.
 	PIILabel_AdharcardNumber PIILabel = "AdharcardNumber"
 
-
 	// PIILabel_DrivingLicenceNumber is pii label for Driving Licence number.
 	// currently we are only supporting for india. for this we have column and value regex both for india
 	PIILabel_DrivingLicenceNumber PIILabel = "DrivingLicenceNumber"
-
 
 	// PIILabel_GSTIN is pii label for GSTIN number.
 	PIILabel_GSTIN PIILabel = "GSTIN"
@@ -88,6 +86,14 @@ const (
 	PIILabel_PassportNumber PIILabel = "PassportNumber"
 	// PIILabel_IFSC is pii label for Indian Financial System Code.
 	PIILabel_IFSC PIILabel = "IFSC"
+	// PIILabel_ESIC is the PII label for Employee State Insurance Corporation number.
+	PIILabel_ESIC PIILabel = "ESIC"
+
+	// PIILabel_RationCard is the PII label for Ration Card number.
+	PIILabel_RationCard PIILabel = "RationCard"
+
+	// PIILabel_SEBIRegistration is the PII label for SEBI Registration number.
+	PIILabel_SEBIRegistration PIILabel = "SEBIRegistration"
 )
 
 // Detector is an interface that defines the methods that a PII detector should implement.

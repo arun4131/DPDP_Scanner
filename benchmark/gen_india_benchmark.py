@@ -88,6 +88,31 @@ def gen_gstin():
     check=gstin_check(partial)
     return partial+check
 
+def gen_abha():
+    # Format: XX-XXXX-XXXX-XXXX
+    return (
+        f"{random.randint(10,99)}-"
+        f"{random.randint(1000,9999)}-"
+        f"{random.randint(1000,9999)}-"
+        f"{random.randint(1000,9999)}"
+    )
+
+def gen_uan():
+    return str(random.randint(100000000000, 999999999999))
+
+def gen_epf_member_id():
+    state = random.choice([
+        "AP","AR","AS","BR","CG","DL","GA","GJ","HR","HP","JK","JH",
+        "KA","KL","MP","MH","MN","ML","MZ","NL","OD","PB","RJ",
+        "SK","TN","TS","TR","UP","UK","WB","CH","PY"
+    ])
+
+    office = ''.join(random.choice(string.ascii_uppercase) for _ in range(3))
+    establishment = f"{random.randint(0, 9999999):07d}"
+    member = f"{random.randint(1, 9999999999):010d}"
+
+    return f"{state}{office}{establishment}{member}"
+
 def gen_ifsc():
     banks=['SBIN','HDFC','ICIC','AXIS','PUNB','UBIN','BKID','CNRB','IOBA','VIJB']
     return random.choice(banks)+'0'+''.join(random.choices('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',k=6))
@@ -185,6 +210,9 @@ GENS = {
     'CIN':                 gen_cin,
     'IPAddress':           gen_ip,
     'MacAddress':          gen_mac,
+    "ABHANumber":          gen_abha,
+    "UAN":                 gen_uan,
+    "EPFMemberID":         gen_epf_member_id,
 }
 
 rows=[]

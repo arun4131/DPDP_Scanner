@@ -412,9 +412,7 @@ func (r *regexColumnDetector) Init() error {
 				Weight: 0.8,
 			},
 		},
-		
-		
-		
+
 		PIILabel_BirthDate: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^.*(date[\s-_]?of[\s-_]?birth|dob|birth[\s-_]?day|date[\s-_]?of[\s-_]?death|birth[\s-_]?date).*$`),
@@ -449,7 +447,7 @@ func (r *regexColumnDetector) Init() error {
 				Weight: 0.4,
 			},
 		},
-		
+
 		PIILabel_Nationality: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^.*(nationality).*$`),
@@ -593,6 +591,42 @@ func (r *regexColumnDetector) Init() error {
 			{
 				Regexp: regexp.MustCompile(`(?i)\b(passport)([\s_-]?(no|num|number|id))?\b`),
 				Weight: 1.0,
+			},
+		},
+		PIILabel_ABHANumber: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(abha|abha_number|abha_no|health_id|healthid|health_identifier|abdm_id|abdm_identifier)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^.*(abha|abdm|health_id|healthid).*$`),
+				Weight: 0.5,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_UAN: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(uan|uan_number|uan_no|epf_uan|employee_uan|universal_account_number)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^.*(uan|epf).*$`),
+				Weight: 0.5,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_EPFMemberID: {
+			{
+				Regexp: regexp.MustCompile(`(?i)^(epf|epf_number|epf_no|epf_member_id|member_id|pf_number|pf_no|provident_fund_number)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^.*(epf|pf|provident).*$`),
+				Weight: 0.5,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_VoterID: {
@@ -789,6 +823,7 @@ func (r *regexValueDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
+
 		PIILabel_Gender: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^(male|female|girl|boy|other|prefer[\s-_]?not[\s-_]?to[\s-_]?say|prefer[\s-_]?not[\s-_]?to[\s-_]?disclose|not[\s-_]?specified|transgender|non[\s-_]?binary)$`),
@@ -867,10 +902,46 @@ func (r *regexValueDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
+		PIILabel_MICRCode: {
+			{
+				// MICR: 9-digit City(3)+Bank(3)+Branch(3). Column context required.
+				Regexp:                regexp.MustCompile(`\b\d{9}\b`),
+				Weight:                0.7,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
+			},
+		},
 		PIILabel_PassportNumber: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^[A-HJ-NPR-WYZ][\s-]?[1-9][0-9]{6}$`),
 				Weight: 1.0,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_ABHANumber: {
+			{
+				Regexp: regexp.MustCompile(`\b\d{2}-\d{4}-\d{4}-\d{4}\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`\b\d{14}\b`),
+				Weight: 0.9,
+				Region: RegionIndia,
+			},
+		},
+		PIILabel_UAN: {
+			{
+				Regexp:                regexp.MustCompile(`\b[1-9][0-9]{11}\b`),
+				Weight:                0.95,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
+			},
+		},
+		PIILabel_EPFMemberID: {
+			{
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}[0-9]{7}[0-9]{5,10}\b`),
+				Weight: 0.95,
 				Region: RegionIndia,
 			},
 		},
@@ -888,6 +959,7 @@ func (r *regexValueDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
+
 		PIILabel_IPAddress: {
 			{
 				Regexp: regexp.MustCompile(`\b(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(:\d{1,5})?\b`), //ipv4
@@ -907,6 +979,7 @@ func (r *regexValueDetector) Init() error {
 				Weight: 0.3,
 			},
 		},
+
 		PIILabel_Address: {
 			{
 				Regexp: regexp.MustCompile(`(?i)\b\d+\b.{4,60}\b(st|street|ave|avenue|road|rd|drive|dr)\b`),
@@ -917,7 +990,6 @@ func (r *regexValueDetector) Init() error {
 				Weight: 0.8,
 			},
 		},
-		
 	}
 	r.filterByRegion(r.region)
 	return nil

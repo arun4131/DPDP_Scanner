@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/klouddb/DPA_private/piiscanner"
 )
 
 var columnContextEntities = map[string]string{
-	"BankAccountNumber":      "account_number",
-	"ChequeNumber":           "cheque_number",
-	"CIFNumber":              "cif_number",
-	"LoanAccountNumber":      "loan_account_number",
-	"InsurancePolicyNumber":  "policy_number",
-	"FASTagID":               "fastag_id",
-	"CVV":                    "cvv",
+	"BankAccountNumber":     "account_number",
+	"ChequeNumber":          "cheque_number",
+	"CIFNumber":             "cif_number",
+	"LoanAccountNumber":     "loan_account_number",
+	"InsurancePolicyNumber": "policy_number",
+	"FASTagID":              "fastag_id",
+	"CVV":                   "cvv",
+	"UAN":                   "uan",
 }
 
 func main() {
@@ -76,6 +78,9 @@ func main() {
 				log.Fatal(err)
 			}
 			if len(labels) > 0 {
+				sort.Slice(labels, func(i, j int) bool {
+					return labels[i].Weight > labels[j].Weight
+				})
 				predicted = string(labels[0].PIILabel)
 			}
 		}

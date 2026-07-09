@@ -24,6 +24,9 @@ const (
 	PIILabel_TAN         PIILabel = "TAN"
 	PIILabel_CIN         PIILabel = "CIN"
 	PIILabel_MICRCode    PIILabel = "MICRCode"
+        PIILabel_ABHANumber PIILabel = "ABHANumber"
+        PIILabel_UAN PIILabel =        "UAN"
+        PIILabel_EPFMemberID PIILabel = "EPFMemberID"
 
 	// PIILabel_BankAccountNumber is pii label for bank account number.
 	// currently we are only supporting for india and USA.

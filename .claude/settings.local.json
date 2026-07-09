@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(grep -E \"\\\\.\\(html|tmpl|css|js|go\\)$\")",
-      "Bash(go list *)"
-    ]
-  }
-}

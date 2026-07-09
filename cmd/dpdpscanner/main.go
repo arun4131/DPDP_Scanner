@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klouddb/dpa/pkg/postgresdb"
-	"github.com/klouddb/dpa/piiscanner"
+	"github.com/klouddb/DPA_private/pkg/postgresdb"
+	"github.com/klouddb/DPA_private/piiscanner"
 )
 
 // ScanRequest is the JSON body for POST /api/scan

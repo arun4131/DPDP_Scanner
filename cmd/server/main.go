@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/klouddb/DPA_private/pkg/postgresdb"
 	"github.com/klouddb/DPA_private/piiscanner"
+	"github.com/klouddb/DPA_private/pkg/postgresdb"
 )
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -94,7 +94,9 @@ func enableCORS(w http.ResponseWriter) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────

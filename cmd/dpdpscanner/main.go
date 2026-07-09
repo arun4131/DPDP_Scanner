@@ -11,18 +11,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klouddb/DPA_private/pkg/postgresdb"
 	"github.com/klouddb/DPA_private/piiscanner"
+	"github.com/klouddb/DPA_private/pkg/postgresdb"
 )
 
 // ScanRequest is the JSON body for POST /api/scan
 type ScanRequest struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Database string `json:"database"`
-	Schema   string `json:"schema"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	Database  string `json:"database"`
+	Schema    string `json:"schema"`
 	RunOption string `json:"run_option"` // datascan | metascan | deepscan
 }
 
@@ -55,7 +55,9 @@ func enableCORS(w http.ResponseWriter) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func handleScan(w http.ResponseWriter, r *http.Request) {
@@ -88,12 +90,12 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	port, _ := strconv.Atoi(req.Port)
 
 	pgConf := postgresdb.Postgres{
-		Host:     req.Host,
-		Port:     strconv.Itoa(port),
-		User:     req.User,
-		Password: req.Password,
-		DBName:   req.Database,
-		SSLmode:  "disable",
+		Host:      req.Host,
+		Port:      strconv.Itoa(port),
+		User:      req.User,
+		Password:  req.Password,
+		DBName:    req.Database,
+		SSLmode:   "disable",
 		PingCheck: true,
 	}
 

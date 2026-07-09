@@ -122,8 +122,7 @@ func gstinValid(gstin string) bool {
 // list of regexes.
 
 type baseRegexDetector struct {
-	m                map[PIILabel][]RegexWithWeight
-	hasColumnContext bool // when true, requiresColumnContext patterns are active
+	m map[PIILabel][]RegexWithWeight
 }
 
 func (r *baseRegexDetector) Name() string {

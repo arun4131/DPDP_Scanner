@@ -32,20 +32,15 @@
             <div class="pii-host-toolbar" id="pii-target-toolbar">
                 <div class="pii-target-field">
                     <label for="pii-instance-select">PostgreSQL Instance</label>
-                    <input id="pii-instance-select" class="pii-target-select" type="text" placeholder="e.g. localhost:5432" />
+                    <select id="pii-instance-select" class="pii-target-select">
+                        <option value="">Loading…</option>
+                    </select>
                 </div>
                 <div class="pii-target-field">
                     <label for="pii-database-select">Database</label>
-                    <input id="pii-database-select" class="pii-target-select" type="text" placeholder="e.g. mydb" />
-                </div>
-                <div class="pii-target-field">
-                    <label for="pii-pg-user">User</label>
-                    <input id="pii-pg-user" class="pii-target-select" type="text" value="postgres"
-                        placeholder="postgres" />
-                </div>
-                <div class="pii-target-field">
-                    <label for="pii-pg-password">Password</label>
-                    <input id="pii-pg-password" class="pii-target-select" type="password" placeholder="••••••••" />
+                    <select id="pii-database-select" class="pii-target-select" disabled>
+                        <option value="">Select instance first</option>
+                    </select>
                 </div>
             </div>
 

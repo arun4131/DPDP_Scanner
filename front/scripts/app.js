@@ -78,7 +78,7 @@ let piiCatalog = {
 // ];
 
 // ── API config ─────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:8080';
+const API_BASE = '';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -236,18 +236,40 @@ function renderPiiResults() {
 
 // ── Dropdown logic ─────────────────────────────────────────────────────────────
 
-function populateInstanceSelect() {
-  // No-op: instance is typed in as a text input
+let instancesData = [];
+
+async function populateInstanceSelect() {
+  const select = document.getElementById('pii-instance-select');
+  if (!select) return;
+  try {
+    const res = await fetch(API_BASE + '/api/instances');
+    instancesData = await res.json();
+    select.innerHTML = '<option value="">Select instance…</option>' +
+      instancesData.map(h => `<option value="${escapeHtml(h.instance)}">${escapeHtml(h.instance)}</option>`).join('');
+    if (instancesData.length) {
+      select.value = instancesData[0].instance;
+      populateDatabaseSelect(instancesData[0].instance);
+    }
+  } catch (err) {
+    select.innerHTML = '<option value="">Failed to load instances</option>';
+  }
 }
 
 function populateDatabaseSelect(instance) {
   const select = document.getElementById('pii-database-select');
   if (!select) return;
-  if (!instance) {
+  const host = instancesData.find(h => h.instance === instance);
+  if (!host || !host.databases.length) {
+    select.innerHTML = '<option value="">No databases found</option>';
     select.disabled = true;
     return;
   }
   select.disabled = false;
+  select.innerHTML = host.databases.map(db =>
+    `<option value="${escapeHtml(db)}">${escapeHtml(db)}</option>`
+  ).join('');
+  select.value = host.databases[0];
+  loadForSelection();
 }
 
 async function loadForSelection() {
@@ -262,10 +284,6 @@ async function loadForSelection() {
     return;
   }
 
-  const parts = instanceVal.split(':');
-  const host  = parts[0];
-  const port  = parts[1] || '5432';
-
   if (statusEl) statusEl.innerHTML = 'Scanning…';
 
   try {
@@ -273,16 +291,12 @@ async function loadForSelection() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        host,
-        port,
-        user:       document.getElementById('pii-pg-user')?.value     || 'postgres',
-        password:   document.getElementById('pii-pg-password')?.value || '',
+        instance:   instanceVal,
         database,
         schema:     'public',
         run_option: 'datascan',
       }),
     });
-
     const data = await res.json();
     piiDataPager.page = 1; piiMetaPager.page = 1; piiLowConfPager.page = 1;
     piiLowConfFilter.search = '';
@@ -312,12 +326,13 @@ async function loadForSelection() {
 // ── Init ───────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('pii-instance-select')?.addEventListener('blur', (e) => {
+  populateInstanceSelect();
+
+  document.getElementById('pii-instance-select')?.addEventListener('change', (e) => {
     populateDatabaseSelect(e.target.value);
-    loadForSelection();
   });
 
-  document.getElementById('pii-database-select')?.addEventListener('blur', () => {
+  document.getElementById('pii-database-select')?.addEventListener('change', () => {
     loadForSelection();
   });
 

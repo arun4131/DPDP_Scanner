@@ -11,17 +11,57 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/klouddb/DPA_private/pkg/postgresdb"
 	"github.com/klouddb/DPA_private/piiscanner"
 )
 
+// ── Config ────────────────────────────────────────────────────────────────────
+
+type InstanceConfig struct {
+	Host      string   `toml:"host"`
+	Port      int      `toml:"port"`
+	User      string   `toml:"user"`
+	Password  string   `toml:"password"`
+	Databases []string `toml:"databases"`
+}
+
+type AppConfig struct {
+	Instances []InstanceConfig `toml:"instances"`
+}
+
+var appConfig AppConfig
+
+func loadConfig(path string) error {
+	_, err := toml.DecodeFile(path, &appConfig)
+	return err
+}
+
+func findInstance(host string, port int) *InstanceConfig {
+	for i := range appConfig.Instances {
+		inst := &appConfig.Instances[i]
+		p := inst.Port
+		if p == 0 {
+			p = 5432
+		}
+		if inst.Host == host && p == port {
+			return inst
+		}
+	}
+	return nil
+}
+
+// ── API types ─────────────────────────────────────────────────────────────────
+
+type InstanceInfo struct {
+	Instance  string   `json:"instance"`
+	Databases []string `json:"databases"`
+}
+
 type ScanRequest struct {
-	Host      string `json:"host"`
-	Port      string `json:"port"`
-	User      string `json:"user"`
-	Password  string `json:"password"`
-	Database  string `json:"database"`
-	Schema    string `json:"schema"`
+	Instance string `json:"instance"` // "host:port"
+	Database string `json:"database"`
+	Schema   string `json:"schema"`
 	RunOption string `json:"run_option"`
 }
 
@@ -43,6 +83,8 @@ type ScanResponse struct {
 	Message   string      `json:"message,omitempty"`
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -53,6 +95,29 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
+}
+
+// ── Handlers ──────────────────────────────────────────────────────────────────
+
+func handleInstances(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	result := []InstanceInfo{}
+	for _, inst := range appConfig.Instances {
+		port := inst.Port
+		if port == 0 {
+			port = 5432
+		}
+		result = append(result, InstanceInfo{
+			Instance:  fmt.Sprintf("%s:%d", inst.Host, port),
+			Databases: inst.Databases,
+		})
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func handleScan(w http.ResponseWriter, r *http.Request) {
@@ -78,17 +143,30 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	if req.RunOption == "" {
 		req.RunOption = "datascan"
 	}
-	if req.Port == "" {
-		req.Port = "5432"
+
+	// Parse instance "host:port"
+	parts := strings.Split(req.Instance, ":")
+	host := parts[0]
+	port := 5432
+	if len(parts) == 2 {
+		port, _ = strconv.Atoi(parts[1])
 	}
 
-	port, _ := strconv.Atoi(req.Port)
+	// Look up credentials from config
+	inst := findInstance(host, port)
+	if inst == nil {
+		writeJSON(w, http.StatusOK, ScanResponse{
+			Available: false,
+			Message:   "Instance not found in config: " + req.Instance,
+		})
+		return
+	}
 
 	pgConf := postgresdb.Postgres{
-		Host:      req.Host,
+		Host:      inst.Host,
 		Port:      strconv.Itoa(port),
-		User:      req.User,
-		Password:  req.Password,
+		User:      inst.User,
+		Password:  inst.Password,
 		DBName:    req.Database,
 		SSLmode:   "disable",
 		PingCheck: true,
@@ -98,7 +176,7 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusOK, ScanResponse{
 			Available: false,
-			Message:   "Could not connect to database: " + err.Error(),
+			Message:   "Could not connect: " + err.Error(),
 		})
 		return
 	}
@@ -177,7 +255,14 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 func main() {
+	if err := loadConfig("config.toml"); err != nil {
+		log.Fatalf("Failed to load config.toml: %v", err)
+	}
+	log.Printf("Loaded %d instance(s) from config.toml", len(appConfig.Instances))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -185,6 +270,7 @@ func main() {
 
 	fs := http.FileServer(http.Dir("./front"))
 	http.Handle("/", fs)
+	http.HandleFunc("/api/instances", handleInstances)
 	http.HandleFunc("/api/scan", handleScan)
 
 	log.Printf("Server running at http://localhost:%s", port)

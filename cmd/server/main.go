@@ -59,9 +59,9 @@ type InstanceInfo struct {
 }
 
 type ScanRequest struct {
-	Instance string `json:"instance"` // "host:port"
-	Database string `json:"database"`
-	Schema   string `json:"schema"`
+	Instance  string `json:"instance"`
+	Database  string `json:"database"`
+	Schema    string `json:"schema"`
 	RunOption string `json:"run_option"`
 }
 
@@ -144,7 +144,6 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		req.RunOption = "datascan"
 	}
 
-	// Parse instance "host:port"
 	parts := strings.Split(req.Instance, ":")
 	host := parts[0]
 	port := 5432
@@ -152,7 +151,6 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		port, _ = strconv.Atoi(parts[1])
 	}
 
-	// Look up credentials from config
 	inst := findInstance(host, port)
 	if inst == nil {
 		writeJSON(w, http.StatusOK, ScanResponse{
@@ -223,6 +221,8 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		LowConf:   []string{},
 	}
 
+	seen := map[string]bool{}
+
 	for tableName, columns := range output.Data {
 		hasHigh := false
 		for colName, piiList := range columns {
@@ -239,15 +239,30 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 					Matched:  matched,
 					Detector: pii.DetectorName,
 				}
+				key := tableName + "|" + colName + "|" + string(pii.Label)
 				if conf == "high" {
-					resp.Rows = append(resp.Rows, row)
+					if !seen[key] {
+						seen[key] = true
+						resp.Rows = append(resp.Rows, row)
+					}
 					hasHigh = true
 				} else {
-					resp.Meta = append(resp.Meta, row)
+					if !seen[key] {
+						seen[key] = true
+						resp.Meta = append(resp.Meta, row)
+					}
 				}
 			}
 		}
-		if !hasHigh {
+		hasMeta := false
+		for _, piiList := range columns {
+			for _, pii := range piiList {
+				if strings.ToLower(pii.Confidence) != "high" {
+					hasMeta = true
+				}
+			}
+		}
+		if !hasHigh && !hasMeta {
 			resp.LowConf = append(resp.LowConf, tableName)
 		}
 	}

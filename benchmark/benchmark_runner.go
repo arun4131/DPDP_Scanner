@@ -10,19 +10,19 @@ import (
 	"github.com/klouddb/DPA_private/piiscanner"
 )
 
-var columnContextColumns = map[string]string{
-	"BankAccountNumber":     "account_number",
-	"ChequeNumber":          "cheque_number",
-	"CIFNumber":             "cif_number",
-	"LoanAccountNumber":     "loan_account_number",
-	"InsurancePolicyNumber": "policy_number",
-	"FASTagID":              "fastag_id",
-	"CVV":                   "cvv",
-	"MICRCode":              "micr_code",
+// entities that need column context to detect by value
+var columnContextEntities = map[string]string{
+	"BankAccountNumber":      "account_number",
+	"ChequeNumber":           "cheque_number",
+	"CIFNumber":              "cif_number",
+	"LoanAccountNumber":      "loan_account_number",
+	"InsurancePolicyNumber":  "policy_number",
+	"FASTagID":               "fastag_id",
+	"CVV":                    "cvv",
 }
 
 func main() {
-	file, err := os.Open("india_large.csv")
+	file, err := os.Open("india_benchmark.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,96 +30,84 @@ func main() {
 
 	reader := csv.NewReader(file)
 
-	// value-only detector for all entities
+	// value-only detector
 	valDetector := piiscanner.NewRegexValueDetectorForRegion(piiscanner.RegionIndia)
 	if err := valDetector.Init(); err != nil {
 		log.Fatal(err)
 	}
 
-	// column+value scanner only for BankAccount
-	bankScanner := piiscanner.NewPiiScanner()
-	bankScanner.AddColumnDetector(piiscanner.NewRegexColumnDetectorForRegion(piiscanner.RegionIndia))
-	bankScanner.AddValueDetector(piiscanner.NewRegexValueDetectorForRegion(piiscanner.RegionIndia))
-	if err := bankScanner.Init(); err != nil {
+	// column+value scanner for ambiguous entities
+	scanner := piiscanner.NewPiiScanner()
+	scanner.AddColumnDetector(piiscanner.NewRegexColumnDetectorForRegion(piiscanner.RegionIndia))
+	scanner.AddValueDetector(piiscanner.NewRegexValueDetectorForRegion(piiscanner.RegionIndia))
+	if err := scanner.Init(); err != nil {
 		log.Fatal(err)
 	}
 
-	total := 0
-	correct := 0
+	total, correct, fpCount := 0, 0, 0
 	perLabelTotal := make(map[string]int)
 	perLabelCorrect := make(map[string]int)
-	fpCount := 0
 	fpByLabel := make(map[string]int)
 
-	_, err = reader.Read()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// skip header
+	reader.Read()
 
 	for {
 		record, err := reader.Read()
 		if err != nil {
 			break
 		}
-
-		value := record[0]
-		expected := record[1]
-
+		value, expected := record[0], record[1]
 		total++
 		perLabelTotal[expected]++
 
 		predicted := "NEG"
-		if column, ok := columnContextColumns[expected]; ok {
 
-			label, err := bankScanner.Detect(context.Background(), column, value)
+		if col, ok := columnContextEntities[expected]; ok {
+			label, err := scanner.Detect(context.Background(), col, value)
 			if err != nil {
 				log.Fatal(err)
 			}
-
 			if label != "" {
 				predicted = string(label)
 			}
-
 		} else {
-
-			// use value-only for everything else
 			labels, err := valDetector.Detect(context.Background(), value, false)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if len(labels) > 0 {
-				predicted = string(
-					piiscanner.NewPiiLabelMapFromPiiLableWithWeight("regex", labels).GetMax(),
-				)
+				predicted = string(labels[0].PIILabel)
 			}
 		}
 
 		if predicted == expected {
 			correct++
 			perLabelCorrect[expected]++
-		} else {
-			if expected == "NEG" {
-				fpByLabel[predicted]++
-				if fpCount < 20 {
-					fmt.Printf("FALSE POSITIVE: %-25s -> %s\n", value, predicted)
-					fpCount++
-				}
-			}
-			if expected == "AdharcardNumber" {
-				fmt.Printf("AADHAAR MISS: %-20s -> %s\n", value, predicted)
-			}
+		} else if expected == "NEG" && predicted != "NEG" {
+			fpCount++
+			fpByLabel[predicted]++
 		}
+	}
+
+	// Print false positives
+	for label, count := range fpByLabel {
+		fmt.Printf("FALSE POSITIVE: %-30s -> %s (%d)\n", "NEG", label, count)
 	}
 
 	fmt.Println("\n========== NEG BREAKDOWN ==========")
 	for label, count := range fpByLabel {
-		fmt.Printf("%-25s %d\n", label, count)
+		fmt.Printf("%-30s %d\n", label, count)
 	}
 
 	fmt.Println("\n========== RESULTS ==========")
-	for label, totalCount := range perLabelTotal {
-		fmt.Printf("%-25s %4d/%4d\n", label, perLabelCorrect[label], totalCount)
+	for label, tot := range perLabelTotal {
+		if label == "NEG" {
+			fmt.Printf("%-30s %d/%d\n", label, perLabelCorrect[label], tot)
+		} else {
+			fmt.Printf("%-30s %d/%d\n", label, perLabelCorrect[label], tot)
+		}
 	}
 	fmt.Println("-----------------------------")
-	fmt.Printf("Overall Accuracy: %.2f%%\n", float64(correct)*100/float64(total))
+	fmt.Printf("Overall Accuracy: %.2f%%\n", float64(correct)/float64(total)*100)
 }

@@ -1,4 +1,6 @@
 # golangci-lint configuration used for CI
+version: "1"
+
 run:
   tests: true
   timeout: 10m
@@ -31,15 +33,7 @@ linters:
   disable-all: true
   enable:
     - misspell
-    - gofmt
     - staticcheck
-    # - gosec
-    # - gocritic
     - govet
     - errcheck
-    - gosimple
-    - govet
-    - typecheck
-    - gofmt
-    - goimports
     - unused

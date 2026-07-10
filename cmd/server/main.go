@@ -184,7 +184,7 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 	defer store.Close()
 
-	cnf, err := piiscanner.NewConfig(&pgConf, req.RunOption, "", "", req.Database, req.Schema, false, false, false)
+	cnf, err := piiscanner.NewConfig(&pgConf, req.RunOption, "", "", req.Database, req.Schema, true, false, false)
 	if err != nil {
 		writeJSON(w, http.StatusOK, ScanResponse{
 			Available: false,
@@ -238,10 +238,8 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 	for tableName, columns := range output.Data {
 		for colName, piiList := range columns {
 			for _, pii := range piiList {
-				// every finding marks the table as having PII
 				tablesWithPII[tableName] = true
 
-				// klouddbshield: only High confidence findings appear in either table
 				if pii.Confidence != "High" {
 					continue
 				}
@@ -261,13 +259,11 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 				key := tableName + "|" + colName + "|" + string(pii.Label)
 
 				if pii.DetectorType == piiscanner.DetectorType_ValueDetector {
-					// Data Scan: value detector + High
 					if !seenRows[key] {
 						seenRows[key] = true
 						resp.Rows = append(resp.Rows, row)
 					}
 				} else {
-					// Meta Scan: column detector + High
 					if !seenMeta[key] {
 						seenMeta[key] = true
 						resp.Meta = append(resp.Meta, row)
@@ -278,7 +274,6 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Low confidence: has PII but nothing made it into Data or Meta Scan
 	for tableName := range tablesWithPII {
 		if !tablesInTop[tableName] {
 			resp.LowConf = append(resp.LowConf, tableName)

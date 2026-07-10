@@ -1021,7 +1021,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_RationCard: {
 			{
 				// Ration card: state code + alphanumeric
-				Regexp:                regexp.MustCompile(`(?i)^[A-Z]{2}[-/]?\d{10,15}$`),
+				Regexp:                regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
 				Weight:                0.7,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,

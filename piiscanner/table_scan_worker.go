@@ -50,11 +50,7 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		for _, detector := range t.detectors {
 			hasColumnContext := false
 			column := strings.ToLower(data.ColumnName)
-			if strings.Contains(column, "driver") ||
-				strings.Contains(column, "licence") ||
-				strings.Contains(column, "license") ||
-				strings.Contains(column, "dl") ||
-				strings.Contains(column, "cif") ||
+			if strings.Contains(column, "cif") ||
 				strings.Contains(column, "account") ||
 				strings.Contains(column, "cheque") ||
 				strings.Contains(column, "micr") ||

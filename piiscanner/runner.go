@@ -95,8 +95,8 @@ func (p *PiiScanner) Detect(ctx context.Context, column, value string) (PIILabel
 	}
 
 	// get label from all value detectors and store them in a map
-      
-        hasColumnContext := len(columnLabels) > 0
+
+	hasColumnContext := len(columnLabels) > 0
 
 	valueLabels := make(map[PIILabel]struct{})
 	for _, d := range p.valueDetector {

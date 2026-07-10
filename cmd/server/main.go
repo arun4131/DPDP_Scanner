@@ -66,11 +66,12 @@ type ScanRequest struct {
 }
 
 type RowResult struct {
-	Table    string `json:"table"`
-	Column   string `json:"column"`
-	Label    string `json:"label"`
-	Matched  string `json:"matched"`
-	Detector string `json:"detector"`
+	Table      string `json:"table"`
+	Column     string `json:"column"`
+	Label      string `json:"label"`
+	Matched    string `json:"matched"`
+	Detector   string `json:"detector"`
+	Confidence string `json:"confidence"`
 }
 
 type ScanResponse struct {
@@ -215,6 +216,11 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Print results to terminal
+	log.Printf("=== Scan results: %s / %s ===", req.Database, req.Schema)
+	piiscanner.PrintTerminalOutput(output, *cnf)
+	piiscanner.CreateTabularOutputfile(output, *cnf)
+
 	resp := ScanResponse{
 		Available: true,
 		Schema:    req.Schema,
@@ -224,48 +230,57 @@ func handleScan(w http.ResponseWriter, r *http.Request) {
 		LowConf:   []string{},
 	}
 
-	seen := map[string]bool{}
+	seenRows := map[string]bool{}
+	seenMeta := map[string]bool{}
+	tablesWithPII := map[string]bool{}
+	tablesInTop := map[string]bool{}
 
 	for tableName, columns := range output.Data {
-		hasHigh := false
 		for colName, piiList := range columns {
 			for _, pii := range piiList {
-				conf := strings.ToLower(pii.Confidence)
+				// every finding marks the table as having PII
+				tablesWithPII[tableName] = true
+
+				// klouddbshield: only High confidence findings appear in either table
+				if pii.Confidence != "High" {
+					continue
+				}
+
 				matched := ""
 				if pii.ScanedValueCount > 0 {
 					matched = fmt.Sprintf("%d/%d", pii.MatchedCount, pii.ScanedValueCount)
 				}
 				row := RowResult{
-					Table:    tableName,
-					Column:   colName,
-					Label:    string(pii.Label),
-					Matched:  matched,
-					Detector: pii.DetectorName,
+					Table:      tableName,
+					Column:     colName,
+					Label:      string(pii.Label),
+					Matched:    matched,
+					Detector:   pii.DetectorName,
+					Confidence: pii.Confidence,
 				}
 				key := tableName + "|" + colName + "|" + string(pii.Label)
-				if conf == "high" {
-					if !seen[key] {
-						seen[key] = true
+
+				if pii.DetectorType == piiscanner.DetectorType_ValueDetector {
+					// Data Scan: value detector + High
+					if !seenRows[key] {
+						seenRows[key] = true
 						resp.Rows = append(resp.Rows, row)
 					}
-					hasHigh = true
 				} else {
-					if !seen[key] {
-						seen[key] = true
+					// Meta Scan: column detector + High
+					if !seenMeta[key] {
+						seenMeta[key] = true
 						resp.Meta = append(resp.Meta, row)
 					}
 				}
+				tablesInTop[tableName] = true
 			}
 		}
-		hasMeta := false
-		for _, piiList := range columns {
-			for _, pii := range piiList {
-				if strings.ToLower(pii.Confidence) != "high" {
-					hasMeta = true
-				}
-			}
-		}
-		if !hasHigh && !hasMeta {
+	}
+
+	// Low confidence: has PII but nothing made it into Data or Meta Scan
+	for tableName := range tablesWithPII {
+		if !tablesInTop[tableName] {
 			resp.LowConf = append(resp.LowConf, tableName)
 		}
 	}

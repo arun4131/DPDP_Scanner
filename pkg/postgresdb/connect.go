@@ -43,14 +43,14 @@ func BuildConnectionString(conf Postgres) string {
 	var parts []string
 
 	parts = append(parts,
-    fmt.Sprintf("host=%s", conf.Host),
-    fmt.Sprintf("port=%s", conf.Port),
-    fmt.Sprintf("user=%s", conf.User),
-)
-if conf.Password != "" {
-    parts = append(parts, fmt.Sprintf("password=%s", conf.Password))
-}
-parts = append(parts, fmt.Sprintf("dbname=%s", conf.DBName))
+		fmt.Sprintf("host=%s", conf.Host),
+		fmt.Sprintf("port=%s", conf.Port),
+		fmt.Sprintf("user=%s", conf.User),
+	)
+	if conf.Password != "" {
+		parts = append(parts, fmt.Sprintf("password=%s", conf.Password))
+	}
+	parts = append(parts, fmt.Sprintf("dbname=%s", conf.DBName))
 
 	if conf.SSLmode != "" {
 		parts = append(parts, fmt.Sprintf("sslmode=%s", conf.SSLmode))

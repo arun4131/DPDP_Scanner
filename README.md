@@ -1,10 +1,6 @@
 # DPA Private — India DPDP Act PII Scanner
 
-[![Go Build](https://github.com/klouddb/DPA_private/actions/workflows/release.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/release.yml)
-
-[![Go Lint](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml)
-
-[![Golang Vulnerability Check](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml)
+[![Go Build](https://github.com/klouddb/DPA_private/actions/workflows/release.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/release.yml) [![Go Lint](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml) [![Golang Vulnerability Check](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml)
 
 A web-based PII (Personally Identifiable Information) scanner for PostgreSQL databases, built for compliance with India's **Digital Personal Data Protection (DPDP) Act 2023**.
 

@@ -161,7 +161,7 @@ DB = {
 python benchmark/seed_comprehensive.py
 ```
 
-This automatically creates a database called **`pii_comprehensive`** and populates 13 tables with 10,000 rows each, covering all 32 India PII entity types (Aadhaar, PAN, GSTIN, credit cards, passports, driving licences, UPI IDs, and more).
+This automatically creates a database called **`pii_comprehensive`** and populates 13 tables with 10,000 rows each, covering all 30+ India PII entity types (Aadhaar, PAN, GSTIN, credit cards, passports, driving licences, UPI IDs, and more).
 
 Add `pii_comprehensive` to your `config.toml` databases list, then open the UI to scan it.
 

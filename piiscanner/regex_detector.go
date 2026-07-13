@@ -372,19 +372,36 @@ func (r *regexColumnDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
-
 		PIILabel_DrivingLicenceNumber: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b(driver|driving|licence|license|dl)[\s_-]?(identity|number|id|no|card|#)?\b`),
-				Weight: 0.8,
+				Regexp: regexp.MustCompile(`(?i)^(dl|dls|dlno|dl[\s_-]?no|dl[\s_-]?number|dl[\s_-]?num)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
 			},
 			{
-				Regexp: regexp.MustCompile(`(?i)(driver|driving)[\s_-]?(licence|license)`),
+				Regexp: regexp.MustCompile(`(?i)^(driver[\s_-]?lic|drivers[\s_-]?lic|driver'[\s_-]?lic|driver's[\s_-]?lic|driv[\s_-]?lic)(s|en|ense|enses|ence|ences|#)?$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^(driver|drivers|driver'|driver's)[\s_-]?(license|licenses|licence|licences|licen)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^(driving[\s_-]?(lic|licen|license|licenses|licence|licences|permit))$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				Regexp: regexp.MustCompile(`(?i)^(driv[\s_-]?(lic|licen|license|licenses|licence|licences))$`),
 				Weight: 0.8,
+				Region: RegionIndia,
 			},
 			{
 				Regexp: regexp.MustCompile(`(?i)(driver|driving|licence|license|dl)[\s_-]?(identity|number|id|no|card|#)?`),
 				Weight: 0.5,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_Password: {
@@ -837,13 +854,12 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_DrivingLicenceNumber: {
 			{
-				// indian driving license regex
-				Regexp: regexp.MustCompile(`(?i)^((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?(?:19|20)[0-9]{2}[\s_-]?[0-9]{7})$`),
-				Weight: 1,
+				// Indian driving license — all state/UT codes including TG (new Telangana 2024), LD (Lakshadweep), TS (old Telangana still valid)
+				Regexp: regexp.MustCompile(`(?i)^((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?(?:19|20)[0-9]{2}[\s_-]?[0-9]{7})$`),
+				Weight: 1.0,
 				Region: RegionIndia,
 			},
 		},
-
 		PIILabel_Gender: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^(male|female|girl|boy|other|prefer[\s-_]?not[\s-_]?to[\s-_]?say|prefer[\s-_]?not[\s-_]?to[\s-_]?disclose|not[\s-_]?specified|transgender|non[\s-_]?binary)$`),
@@ -933,7 +949,7 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_PassportNumber: {
 			{
-				Regexp: regexp.MustCompile(`(?i)^[A-HJ-NPR-WYZ][\s-]?[1-9][0-9]{6}$`),
+				Regexp: regexp.MustCompile(`(?i)^[A-Z][0-9]{7}$`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},

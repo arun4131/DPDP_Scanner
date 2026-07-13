@@ -63,3 +63,11 @@ benchmark/india_benchmark.csv
 
 
 .claude/
+
+
+# Graphify
+graphify-out/
+
+
+dpdpascanner.exe
+dpdpascanner

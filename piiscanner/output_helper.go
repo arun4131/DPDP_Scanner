@@ -77,7 +77,7 @@ func GenerateTabularOutput(w io.Writer, i *DatabasePIIScanOutput, cnf Config, fi
 			for _, piidata := range piidatas {
 				tablesWithPIIData.Add(tablename)
 				if filePrint == "" && !cnf.printAllResults && piidata.Confidence != "High" {
-					break
+					continue
 				} else if filePrint != "" && !strings.Contains(filePrint, piidata.Confidence) {
 					continue
 				}
@@ -97,7 +97,7 @@ func GenerateTabularOutput(w io.Writer, i *DatabasePIIScanOutput, cnf Config, fi
 				tableShowingInTopTable.Add(tablename)
 
 				if filePrint == "" && !cnf.printAllResults {
-					break
+					continue
 				}
 			}
 		}

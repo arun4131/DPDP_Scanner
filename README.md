@@ -104,17 +104,17 @@ NOTE: Dont forget to attach .exe after "dpdpascanner" in the commands if you are
 
 **Scan a specific database:**
 ```bash
-.\dpdpascanner --database sales_db
+./dpdpascanner --database sales_db
 ```
 
 **Scan a specific server:**
 ```bash
-.\dpdpascanner --target-host prod-server.example.com
+./dpdpascanner --target-host prod-server.example.com
 ```
 
 **Scan a specific server and database together:**
 ```bash
-.\dpdpascanner --target-host localhost --database hr_db
+./dpdpascanner --target-host localhost --database hr_db
 ```
 
 ---
@@ -235,42 +235,42 @@ Two files are created (or overwritten) after each database scan:
 
 **Scan everything, all servers and databases:**
 ```bash
-.\dpdpascanner
+./dpdpascanner
 ```
 
 **Scan only one database on one server:**
 ```bash
-.\dpdpascanner --target-host localhost --database hr_db --piiscanner datascan
+./dpdpascanner --target-host localhost --database hr_db --piiscanner datascan
 ```
 
 **Quick scan using column names only (no data read):**
 ```bash
-.\dpdpascanner --piiscanner metascan --database sales_db
+./dpdpascanner --piiscanner metascan --database sales_db
 ```
 
 **Skip audit and temp tables:**
 ```bash
-.\dpdpascanner --exclude-table audit_logs,temp_sessions,migrations
+./dpdpascanner --exclude-table audit_logs,temp_sessions,migrations
 ```
 
 **Scan only specific tables:**
 ```bash
-.\dpdpascanner --include-table users,customers,employees
+./dpdpascanner --include-table users,customers,employees
 ```
 
 **Config file is in a different folder:**
 ```bash
-.\dpdpascanner --config C:\configs\prod --database sales_db
+./dpdpascanner --config C:\configs\prod --database sales_db
 ```
 
 **See all confidence levels in terminal (not just High):**
 ```bash
-.\dpdpascanner --print-all --database hr_db
+./dpdpascanner --print-all --database hr_db
 ```
 
 **Non-default schema:**
 ```bash
-.\dpdpascanner --schema hr --database company_db
+./dpdpascanner --schema hr --database company_db
 ```
 
 ---

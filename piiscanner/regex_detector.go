@@ -855,7 +855,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_DrivingLicenceNumber: {
 			{
 				// Indian driving license — all state/UT codes including TG (new Telangana 2024), LD (Lakshadweep), TS (old Telangana still valid)
-				Regexp: regexp.MustCompile(`(?i)^((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?(?:19|20)[0-9]{2}[\s_-]?[0-9]{7})$`),
+				Regexp: regexp.MustCompile(`(?i)^((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?(?:19[89][0-9]|20[012][0-9])[\s_-]?[0-9]{7})$`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},

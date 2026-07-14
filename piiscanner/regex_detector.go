@@ -647,8 +647,27 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_VoterID: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b(voter|epic)([\s_-]?(id|no|num|number|card))?\b`),
+				// epic, epicid, epic_id, epic_no, epic_number
+				Regexp: regexp.MustCompile(`(?i)^(epic|epic[\s_-]?(id|no|num|number|card))$`),
 				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// voter, voterid, voter_id, voter_no, voter_number
+				Regexp: regexp.MustCompile(`(?i)^(voter|voter[\s_-]?(id|no|num|number|card))$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// elector, electorid, elector_id, elector_no
+				Regexp: regexp.MustCompile(`(?i)^(elector|elector[\s_-]?(id|no|num|number|card))$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// Broad fallback
+				Regexp: regexp.MustCompile(`(?i)(voter|elector|epic)([\s_-]?(id|no|num|number|card))?`),
+				Weight: 0.5,
 			},
 		},
 		PIILabel_IFSC: {

@@ -9,10 +9,10 @@ try:
     print_log_output("log", "Importing required libraries", None)
 
     import sys
-    import en_core_web_sm
+    import en_core_web_lg
     print_log_output("log", "Successfully imported required libraries", None)
 
-    nlp = en_core_web_sm.load() # need to find some solution to speedup loading
+    nlp = en_core_web_lg.load() # need to find some solution to speedup loading
     print_log_output("log", "Successfully loaded model", None)
 
     for i in sys.stdin:

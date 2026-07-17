@@ -3,6 +3,7 @@ package piiscanner
 import (
 	"context"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 )
@@ -82,6 +83,24 @@ func verhoeffValid(num string) bool {
 		c = verhoeffD[c][verhoeffP[j%8][digit]]
 	}
 	return c == 0
+}
+
+func ipv4Valid(ip string) bool {
+
+	host := ip
+
+	if strings.Contains(ip, ":") {
+		if h, _, err := net.SplitHostPort(ip); err == nil {
+			host = h
+		}
+	}
+
+	return net.ParseIP(host) != nil
+}
+
+func ipv6Valid(ip string) bool {
+	parsed := net.ParseIP(ip)
+	return parsed != nil && parsed.To4() == nil
 }
 
 // gstinValid validates a GSTIN using the mod-36 check digit algorithm
@@ -174,6 +193,38 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnCo
 		for _, v := range regexes {
 			if v.RequiresColumnContext && !hasColumnContext {
 				continue
+			}
+			if label == PIILabel_IPAddress {
+
+				matches := v.Regexp.FindStringSubmatch(word)
+
+				if len(matches) == 0 {
+					continue
+				}
+
+				matchedIP := matches[0]
+				if len(matches) > 1 {
+					matchedIP = matches[1]
+				}
+
+				valid := false
+
+				if strings.Contains(matchedIP, ".") {
+					valid = ipv4Valid(matchedIP)
+				} else {
+					valid = ipv6Valid(matchedIP)
+				}
+
+				if !valid {
+					continue
+				}
+
+				out = append(out, PiiLabelWithWeight{
+					PIILabel: label,
+					Weight:   v.Weight,
+				})
+
+				break
 			}
 			if v.Regexp.MatchString(word) {
 
@@ -1238,7 +1289,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_MICRCode: {
 			{
 				// MICR: 9-digit City(3)+Bank(3)+Branch(3). Column context required.
-				Regexp:                regexp.MustCompile(`\b\d{9}\b`),
+				Regexp:                regexp.MustCompile(`^\d{9}$`),
 				Weight:                0.7,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1295,7 +1346,15 @@ func (r *regexValueDetector) Init() error {
 
 		PIILabel_IPAddress: {
 			{
-				Regexp: regexp.MustCompile(`\b(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(:\d{1,5})?\b`), //ipv4
+				Regexp: regexp.MustCompile(
+					`(?:^|[^0-9])((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}(?::(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]?\d{1,4}))?)(?:$|[^0-9])`,
+				),
+				Weight: 1.0,
+			},
+			{
+				Regexp: regexp.MustCompile(
+					`(?i)(?:^|[^0-9A-Fa-f:])((?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:|(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|(?:[0-9a-f]{1,5}(?::[0-9a-f]{1,4}){1,2})|(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}|(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}|(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}|[0-9a-f]{1,4}:(?:(?::[0-9a-f]{1,4}){1,6})|:(?:(?::[0-9a-f]{1,4}){1,7}|:)|::ffff:\d{1,3}(?:\.\d{1,3}){3})(?:%[0-9A-Za-z._-]+)?)(?:$|[^0-9A-Fa-f:])`,
+				),
 				Weight: 1.0,
 			},
 			// regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4})|(([0-9a-fA-F]{1,4}:){1,7}|:):((:[0-9a-fA-F]{1,4}){1,7}|:))$`),

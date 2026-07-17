@@ -257,7 +257,16 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnCo
 						continue
 					}
 				}
+				if label == PIILabel_MacAddress {
+					matchedMAC := v.Regexp.FindString(word)
+					if matchedMAC == "" {
+						continue
+					}
 
+					if _, err := net.ParseMAC(matchedMAC); err != nil {
+						continue
+					}
+				}
 				out = append(out, PiiLabelWithWeight{
 					PIILabel: label,
 					Weight:   v.Weight,
@@ -1358,7 +1367,26 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_VehicleNumber: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[\\ -]?[0-9]{2}[\\ -]?[A-Z]{1,2}[\\ -]?[0-9]{4}\b`),
+				// Standard Registration
+				Regexp: regexp.MustCompile(`(?i)\b(?:AN|AP|AR|AS|BR|CG|CH|DD|DL|DN|GA|GJ|HP|HR|JH|JK|KA|KL|LA|LD|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB)[ -]?[0-9]{2}[ -]?[A-Z]{1,3}[ -]?[0-9]{4}\b`),
+				Weight: 0.8,
+				Region: RegionIndia,
+			},
+			{
+				// Bharat (BH) Series
+				Regexp: regexp.MustCompile(`(?i)\b[0-9]{2}[ -]?BH[ -]?[0-9]{4}[ -]?[A-Z]{2}\b`),
+				Weight: 0.8,
+				Region: RegionIndia,
+			},
+			{
+				// Vintage (VA) Series
+				Regexp: regexp.MustCompile(`(?i)\b(?:AN|AP|AR|AS|BR|CG|CH|DD|DL|DN|GA|GJ|HP|HR|JH|JK|KA|KL|LA|LD|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB)[ -]?VA[ -]?[A-Z]{2}[ -]?[0-9]{4}\b`),
+				Weight: 0.8,
+				Region: RegionIndia,
+			},
+			{
+				// Diplomatic Registration
+				Regexp: regexp.MustCompile(`(?i)\b[0-9]{3}[ -]?(?:CD|CC|UN)[ -]?[0-9]{4}\b`),
 				Weight: 0.8,
 				Region: RegionIndia,
 			},
@@ -1381,7 +1409,10 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_MacAddress: {
 			{
-				Regexp: regexp.MustCompile(`\b[0-9a-fA-F]{2}(?:(?::|%3A)[0-9a-fA-F]{2}){5}\b`),
+				//Supports colon, dash and Cisco dotted notation
+				Regexp: regexp.MustCompile(
+					`(?i)\b[0-9a-f]{2}(?:[:\-][0-9a-f]{2}){5}\b|\b[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}\b`,
+				),
 				Weight: 1.0,
 			},
 		},

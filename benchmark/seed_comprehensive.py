@@ -15,7 +15,7 @@ DB = {
     "host":     "localhost",
     "port":     5432,
     "user":     "postgres",
-    "password": "1234",   # ← change if needed
+    "password": "9849",   # ← change if needed
 }
 
 # ── Checksum helpers ─────────────────────────────────────────────────────────

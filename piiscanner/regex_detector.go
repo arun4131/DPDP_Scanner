@@ -977,6 +977,26 @@ func (r *regexColumnDetector) Init() error {
 				Region: RegionIndia,
 			},
 		},
+		PIILabel_VehicleNumber: {
+			{
+				// High confidence - exact Vehicle Registration Number / Number Plate column names
+				Regexp: regexp.MustCompile(`(?i)^(vehicle[\s_-]?number|vehicle[\s_-]?no|vehicle[\s_-]?num|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?registration[\s_-]?no|vehicle[\s_-]?registration[\s_-]?num|vehicle[\s_-]?registration[\s_-]?id|vehicle[\s_-]?registration[\s_-]?mark|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|vehicle[\s_-]?reg[\s_-]?no|vehicle[\s_-]?reg[\s_-]?num|registration[\s_-]?mark|registration[\s_-]?mark[\s_-]?number|registration[\s_-]?plate|registration[\s_-]?plate[\s_-]?number|number[\s_-]?plate|number[\s_-]?plate[\s_-]?number|license[\s_-]?plate|license[\s_-]?plate[\s_-]?number|licence[\s_-]?plate|licence[\s_-]?plate[\s_-]?number|vehicle[\s_-]?plate|vehicle[\s_-]?plate[\s_-]?number|plate[\s_-]?number|motor[\s_-]?vehicle[\s_-]?number|motor[\s_-]?vehicle[\s_-]?registration|motor[\s_-]?vehicle[\s_-]?registration[\s_-]?number|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration[\s_-]?number|transport[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration[\s_-]?number|vrn|vehicle[\s_-]?vrn)$`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// Medium confidence - common Vehicle Registration Number aliases appearing within column names
+				Regexp: regexp.MustCompile(`(?i)\b(vehicle[\s_-]?number|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|registration[\s_-]?mark|registration[\s_-]?plate|number[\s_-]?plate|license[\s_-]?plate|licence[\s_-]?plate|vehicle[\s_-]?plate|motor[\s_-]?vehicle[\s_-]?registration|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration|vrn|vehicle[\s_-]?vrn)\b`),
+				Weight: 0.5,
+				Region: RegionIndia,
+			},
+			{
+				// Low confidence - Vehicle Registration Number specific fallback
+				Regexp: regexp.MustCompile(`(?i)^.*(vehicle[\s_-]?registration|vehicle[\s_-]?number|vehicle[\s_-]?reg|registration[\s_-]?mark|registration[\s_-]?plate|number[\s_-]?plate|license[\s_-]?plate|licence[\s_-]?plate|vehicle[\s_-]?plate|motor[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration|vrn|vehicle[\s_-]?vrn).*$`),
+				Weight: 0.3,
+				Region: RegionIndia,
+			},
+		},
 	}
 	r.filterByRegion(r.region)
 	return nil

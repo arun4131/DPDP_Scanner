@@ -7,13 +7,12 @@ import (
 	"log"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/klouddb/DPA_private/piiscanner"
 )
 
-var columnContextEntities = map[string]string{
+var columnContextEntitiesSpacy = map[string]string{
 	"BankAccountNumber":     "account_number",
 	"ChequeNumber":          "cheque_number",
 	"CIFNumber":             "cif_number",
@@ -25,27 +24,6 @@ var columnContextEntities = map[string]string{
 	"RationCard":            "ration_card",
 	"BirthDate":             "date_of_birth",
 	"Location":              "latitude",
-	// Spacy entities — column context only
-	"Name":    "first_name",
-	"Address": "address",
-}
-
-// Column keywords that trigger spacy for Name and Address
-var spacyNameColumns = map[string]bool{
-	"name": true, "first_name": true, "last_name": true,
-	"full_name": true, "person_name": true, "customer_name": true,
-	"employee_name": true, "contact_name": true, "fname": true, "lname": true,
-}
-
-var spacyAddressColumns = map[string]bool{
-	"address": true, "street": true, "city": true, "locality": true,
-	"residence": true, "location_address": true, "home_address": true,
-	"office_address": true, "billing_address": true, "shipping_address": true,
-}
-
-func isSpacyColumn(col string) bool {
-	col = strings.ToLower(col)
-	return spacyNameColumns[col] || spacyAddressColumns[col]
 }
 
 func main() {
@@ -101,7 +79,6 @@ func main() {
 	var regexDuration time.Duration
 	var spacyDuration time.Duration
 	spacyCalls := 0
-	spacySkipped := 0
 
 	// skip header
 	if _, err := reader.Read(); err != nil {
@@ -121,7 +98,7 @@ func main() {
 
 		predicted := "NEG"
 
-		if col, ok := columnContextEntities[expected]; ok {
+		if col, ok := columnContextEntitiesSpacy[expected]; ok {
 			// Context-dependent entities — use scanner with column name
 			t := time.Now()
 			label, err := scanner.Detect(context.Background(), col, value)
@@ -132,26 +109,8 @@ func main() {
 			if label != "" {
 				predicted = string(label)
 			}
-
-			// For Name/Address — only call spacy if column context matches
-			if predicted == "NEG" && spacyErr == nil && (expected == "Name" || expected == "Address") {
-				if isSpacyColumn(col) {
-					t = time.Now()
-					spacyLabels, err := spacyDet.Detect(context.Background(), value, true)
-					spacyDuration += time.Since(t)
-					spacyCalls++
-					if err == nil && len(spacyLabels) > 0 {
-						sort.Slice(spacyLabels, func(i, j int) bool {
-							return spacyLabels[i].Weight > spacyLabels[j].Weight
-						})
-						predicted = string(spacyLabels[0].PIILabel)
-					}
-				} else {
-					spacySkipped++
-				}
-			}
 		} else {
-			// Run regex value detector
+			// Run regex value detector first
 			t := time.Now()
 			labels, err := valDetector.Detect(context.Background(), value, false)
 			regexDuration += time.Since(t)
@@ -164,6 +123,20 @@ func main() {
 					return labels[i].Weight > labels[j].Weight
 				})
 				predicted = string(labels[0].PIILabel)
+			}
+
+			// If regex found nothing and spacy is available — try spacy for Name/Address
+			if predicted == "NEG" && spacyErr == nil && (expected == "Name" || expected == "Address" || expected == "NEG") {
+				t = time.Now()
+				spacyLabels, err := spacyDet.Detect(context.Background(), value, false)
+				spacyDuration += time.Since(t)
+				spacyCalls++
+				if err == nil && len(spacyLabels) > 0 {
+					sort.Slice(spacyLabels, func(i, j int) bool {
+						return spacyLabels[i].Weight > spacyLabels[j].Weight
+					})
+					predicted = string(spacyLabels[0].PIILabel)
+				}
 			}
 		}
 
@@ -189,7 +162,6 @@ func main() {
 	fmt.Printf("Total scan time        : %v\n", scanDuration)
 	fmt.Printf("  Regex detection      : %v\n", regexDuration)
 	fmt.Printf("  Spacy detection      : %v (%d calls)\n", spacyDuration, spacyCalls)
-	fmt.Printf("  Spacy skipped        : %d rows (no column context)\n", spacySkipped)
 	fmt.Printf("Total time (all)       : %v\n", totalDuration)
 	fmt.Printf("Rows processed         : %d\n", total)
 	if total > 0 {

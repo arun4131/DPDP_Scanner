@@ -442,7 +442,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
     <div class="stat-value">{{.LowDataCount}}</div>
   </div>
   <div class="stat-card pii-stat--low-meta">
-    <div class="stat-label">Low / Med confidence · Meta</div>
+    <div class="stat-label">Low / Medium confidence · Meta</div>
     <div class="stat-value">{{.LowMetaCount}}</div>
   </div>
 </div>

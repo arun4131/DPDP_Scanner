@@ -142,6 +142,7 @@ func gstinValid(gstin string) bool {
 
 type baseRegexDetector struct {
 	m map[PIILabel][]RegexWithWeight
+        isColumnDetector bool
 }
 
 func (r *baseRegexDetector) Name() string {
@@ -227,6 +228,8 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnCo
 				break
 			}
 			if v.Regexp.MatchString(word) {
+                 
+                            if !r.isColumnDetector {
 
 				if label == PIILabel_CreditCard {
 
@@ -266,7 +269,8 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnCo
 					if _, err := net.ParseMAC(matchedMAC); err != nil {
 						continue
 					}
-				}
+                                    }
+				} // end !r.isColumnDetector
 				out = append(out, PiiLabelWithWeight{
 					PIILabel: label,
 					Weight:   v.Weight,
@@ -299,7 +303,7 @@ func NewRegexColumnDetector() Detector {
 // Use RegionIndia, RegionUS, RegionUK, or empty string for all regions.
 func NewRegexColumnDetectorForRegion(region string) Detector {
 	return &regexColumnDetector{
-		baseRegexDetector: &baseRegexDetector{},
+                baseRegexDetector: &baseRegexDetector{isColumnDetector: true},  // ← add flag
 		region:            region,
 	}
 }
@@ -843,7 +847,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_AdharcardNumber: {
 			{
 				// High confidence - exact Aadhaar/UIDAI related column names
-				Regexp: regexp.MustCompile(`(?i)^(aadhaar|aadhaar[\s_-]?number|aadhaar[\s_-]?num|aadhaar[\s_-]?no|aadhaar[\s_-]?id|aadhaar[\s_-]?identifier|aadhaar[\s_-]?card|aadhaar[\s_-]?card[\s_-]?number|aadhaar[\s_-]?uid|aadhaar[\s_-]?uid[\s_-]?number|aadhar|aadhar[\s_-]?number|aadhar[\s_-]?num|aadhar[\s_-]?no|aadhar[\s_-]?id|aadhar[\s_-]?identifier|aadhar[\s_-]?card|aadhar[\s_-]?card[\s_-]?number|aadhar[\s_-]?uid|aadhar[\s_-]?uid[\s_-]?number|adhaar|adhaar[\s_-]?number|adhaar[\s_-]?num|adhaar[\s_-]?no|adhaar[\s_-]?card|adhar|adhar[\s_-]?number|adhar[\s_-]?num|adhar[\s_-]?no|uidai|uidai[\s_-]?number|uidai[\s_-]?id|uidai[\s_-]?identifier|uid|uid[\s_-]?number|uid[\s_-]?no|uid[\s_-]?id|unique[\s_-]?identification[\s_-]?number|unique[\s_-]?identification[\s_-]?id|unique[\s_-]?identity[\s_-]?number|resident[\s_-]?id|resident[\s_-]?identity[\s_-]?number|national[\s_-]?identity[\s_-]?number)$`),
+				Regexp: regexp.MustCompile(`(?i)^(aadhaar|aadhaar[\s_-]?number|aadhaar[\s_-]?num|aadhaar[\s_-]?no|aadhaar[\s_-]?id|aadhaar[\s_-]?identifier|aadhaar[\s_-]?card|aadhaar[\s_-]?card[\s_-]?number|aadhaar[\s_-]?uid|aadhaar[\s_-]?uid[\s_-]?number|aadhar|aadhar[\s_-]?number|aadhar[\s_-]?num|aadhar[\s_-]?no|aadhar[\s_-]?id|aadhar[\s_-]?identifier|aadhar[\s_-]?card|aadhar[\s_-]?card[\s_-]?number|aadhar[\s_-]?uid|aadhar[\s_-]?uid[\s_-]?number|adhaar|adhaar[\s_-]?number|adhaar[\s_-]?num|adhaar[\s_-]?no|adhaar[\s_-]?card|adhar|adhar[\s_-]?number|adhar[\s_-]?num|adhar[\s_-]?no|uidai|uidai[\s_-]?number|uidai[\s_-]?id|uidai[\s_-]?identifier|unique[\s_-]?identification[\s_-]?number|unique[\s_-]?identification[\s_-]?id|unique[\s_-]?identity[\s_-]?number|resident[\s_-]?id|resident[\s_-]?identity[\s_-]?number|national[\s_-]?identity[\s_-]?number)$`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1255,25 +1259,25 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_Phone: {
 			{
 				// India mobile - bare 10 digit
-				Regexp: regexp.MustCompile(`^[6-9][0-9]{9}$`),
+				Regexp: regexp.MustCompile(`\b[6-9][0-9]{9}\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
 				// India mobile - 0 prefix
-				Regexp: regexp.MustCompile(`^0[6-9][0-9]{9}$`),
+				Regexp: regexp.MustCompile(`\b0[6-9][0-9]{9}\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
 				// India mobile - 91 prefix
-				Regexp: regexp.MustCompile(`^91[6-9][0-9]{9}$`),
+				Regexp: regexp.MustCompile(`\b91[6-9][0-9]{9}\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
 				// India mobile - +91 prefix
-				Regexp: regexp.MustCompile(`^\+91[\s-]?[6-9][0-9]{4}[\s-]?[0-9]{5}$`),
+				Regexp: regexp.MustCompile(`\+91[\s-]?[6-9][0-9]{4}[\s-]?[0-9]{5}`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1333,14 +1337,23 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_ABHANumber: {
 			{
+				// ABHA dashed format: 12-3456-7890-1234
 				Regexp: regexp.MustCompile(`\b\d{2}-\d{4}-\d{4}-\d{4}\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				Regexp: regexp.MustCompile(`\b\d{14}\b`),
-				Weight: 0.9,
+				// ABHA spaced format: 12 3456 7890 1234
+				Regexp: regexp.MustCompile(`\b\d{2}\s\d{4}\s\d{4}\s\d{4}\b`),
+				Weight: 1.0,
 				Region: RegionIndia,
+			},
+			{
+				// ABHA plain 14 digits — requires column context to avoid FP
+				Regexp:                regexp.MustCompile(`\b\d{14}\b`),
+				Weight:                0.6,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_UAN: {

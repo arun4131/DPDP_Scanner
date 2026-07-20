@@ -48,7 +48,9 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 		useSpacy = true
 		runOption = RunOption_DataScan_String
 		printAllResults = true
-	}
+	} else if runOption == RunOption_DeepScan_String {
+                useSpacy = true
+        }
 
 	if spacyOnly {
 		// incase of spacy only we will run data scan only and that also with spacy

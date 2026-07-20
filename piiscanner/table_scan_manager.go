@@ -148,7 +148,7 @@ func (t *TableScanManager) Start(ctx context.Context, n int) error {
 				}
 			}
 
-			worker := NewTableScanWorker(t.inputChan, t.outputChan, detectors)
+			worker := NewTableScanWorker(t.inputChan, t.outputChan, detectors).WithColumnDetector(t.columnDetector)
 			t.workerGroup.Go(func() error {
 				return worker.Start(ctx)
 			})

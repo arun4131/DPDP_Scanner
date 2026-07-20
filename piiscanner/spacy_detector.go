@@ -294,12 +294,12 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, hasColumnContex
 		case "PERSON":
 			labels = append(labels, PiiLabelWithWeight{
 				PIILabel: PIILabel_Name,
-				Weight:   0.3,
+				Weight:   0.7,
 			})
 		case "GPE":
 			labels = append(labels, PiiLabelWithWeight{
 				PIILabel: PIILabel_Address,
-				Weight:   0.3,
+				Weight:   0.7,
 			})
 			// case "DATE":
 			// 	labels = append(labels, PIILabel_BirthDate)

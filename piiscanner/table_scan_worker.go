@@ -3,7 +3,7 @@ package piiscanner
 import (
 	"context"
 	"fmt"
-	"strings"
+	"sync"
 )
 
 type ScanInput struct {
@@ -23,15 +23,56 @@ type TableScanWorker struct {
 	inputChan  chan ScanInput
 	outputChan chan ScanOutput
 
-	detectors []Detector
+	detectors       []Detector
+	columnDetector  Detector
+
+	// cache column context results — same column name always gives same result
+	columnContextCache   map[string]bool
+	columnContextCacheMu sync.RWMutex
 }
 
 func NewTableScanWorker(inputChan chan ScanInput, outputChan chan ScanOutput, detectors []Detector) *TableScanWorker {
 	return &TableScanWorker{
-		inputChan:  inputChan,
-		outputChan: outputChan,
-		detectors:  detectors,
+		inputChan:          inputChan,
+		outputChan:         outputChan,
+		detectors:          detectors,
+		columnContextCache: make(map[string]bool),
 	}
+}
+
+// WithColumnDetector sets the column detector used to determine hasColumnContext.
+// If not set, hasColumnContext is always false.
+func (t *TableScanWorker) WithColumnDetector(d Detector) *TableScanWorker {
+	t.columnDetector = d
+	return t
+}
+
+// hasColumnContext checks if the column name matches any column detector pattern.
+// Results are cached so the regex only runs once per unique column name.
+func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) bool {
+	// Check cache first
+	t.columnContextCacheMu.RLock()
+	if val, ok := t.columnContextCache[column]; ok {
+		t.columnContextCacheMu.RUnlock()
+		return val
+	}
+	t.columnContextCacheMu.RUnlock()
+
+	// Run column detector
+	result := false
+	if t.columnDetector != nil {
+		labels, err := t.columnDetector.Detect(ctx, column, false)
+		if err == nil && len(labels) > 0 {
+			result = true
+		}
+	}
+
+	// Cache the result
+	t.columnContextCacheMu.Lock()
+	t.columnContextCache[column] = result
+	t.columnContextCacheMu.Unlock()
+
+	return result
 }
 
 func (t *TableScanWorker) Start(ctx context.Context) (err error) {
@@ -46,42 +87,14 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 			continue
 		}
 
-		// detectorLoop:
+		// Determine column context once per column name using column detector
+		hasColumnContext := t.getColumnContext(ctx, data.ColumnName)
+
 		for _, detector := range t.detectors {
-			hasColumnContext := false
-			column := strings.ToLower(data.ColumnName)
-			if strings.Contains(column, "cif") ||
-				strings.Contains(column, "account") ||
-				strings.Contains(column, "cheque") ||
-				strings.Contains(column, "micr") ||
-				strings.Contains(column, "loan") ||
-				strings.Contains(column, "insurance") ||
-				strings.Contains(column, "policy") ||
-				strings.Contains(column, "fastag") ||
-				strings.Contains(column, "demat") ||
-				strings.Contains(column, "cvv") ||
-				strings.Contains(column, "dob") ||
-				strings.Contains(column, "birth") ||
-				strings.Contains(column, "lat") ||
-				strings.Contains(column, "lon") ||
-				strings.Contains(column, "ration") ||
-				strings.Contains(column, "card") {
-				hasColumnContext = true
-			}
 			labels, err := detector.Detect(ctx, data.Value, hasColumnContext)
 			if err != nil {
 				return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
 			}
-
-			// for _, v := range labels {
-			// 	if v.Weight == 1.0 {
-			// 		t.outputChan <- ScanOutput{
-			// 			Type:      "value",
-			// 			ScanInput: data,
-			// 			Labels:    labels,
-			// 		}
-			// 		break detectorLoop
-			// 	}
 
 			t.outputChan <- ScanOutput{
 				Type:      "value",

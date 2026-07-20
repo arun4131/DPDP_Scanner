@@ -23,6 +23,7 @@ var columnContextEntities = map[string]string{
 	"RationCard":            "ration_card",
 	"BirthDate":             "date_of_birth",
 	"Location":              "latitude",
+        "ABHANumber":            "abha_number",
 }
 
 func main() {

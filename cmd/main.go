@@ -28,7 +28,7 @@ type AppConfig struct {
 
 func main() {
 	configDir     := flag.String("config", ".", "directory containing config.toml")
-	runOption     := flag.String("piiscanner", "datascan", "scan type: datascan | metascan | deepscan")
+	runOption     := flag.String("piiscanner", "datascan", "scan type: datascan | metascan | deepscan | spacyscan")
 	dbFilter      := flag.String("database", "", "scan only this database (leave empty to scan all)")
 	schema        := flag.String("schema", "public", "schema to scan")
 	excludeTable  := flag.String("exclude-table", "", "comma-separated list of tables to exclude")
@@ -38,7 +38,7 @@ func main() {
 	printSummary  := flag.Bool("print-summary", false, "print summary only")
 	flag.Parse()
 
-	validOptions := map[string]bool{"datascan": true, "metascan": true, "deepscan": true}
+	validOptions := map[string]bool{"datascan": true, "metascan": true, "deepscan": true , "spacyscan": true}
 	if !validOptions[*runOption] {
 		log.Fatalf("Invalid --piiscanner value: %q. Must be datascan, metascan, or deepscan", *runOption)
 	}

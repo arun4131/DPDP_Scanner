@@ -14,7 +14,7 @@ import (
 )
 
 func PrintTerminalOutput(i *DatabasePIIScanOutput, cnf Config) {
-	if i == nil || len(i.Data) == 0 {
+	if !i.HasFindings() {
 		fmt.Println("> No PII data found in database")
 		return
 	}
@@ -32,7 +32,7 @@ func printTerminalOutputTable(i *DatabasePIIScanOutput, cnf Config) {
 }
 
 func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config) {
-	if i == nil || len(i.Data) == 0 {
+	if !i.HasFindings() {
 		return
 	}
 
@@ -162,7 +162,7 @@ func GenerateTabularOutput(w io.Writer, i *DatabasePIIScanOutput, cnf Config, fi
 }
 
 func printTerminalOutputSimple(i *DatabasePIIScanOutput) {
-	if i == nil || len(i.Data) == 0 {
+	if !i.HasFindings() {
 		fmt.Println("> No PII data found in database")
 		return
 	}

@@ -247,6 +247,20 @@ type DatabasePIIScanOutput struct {
 }
 type TableDetailOutput map[string][]PIIDataWithWeightString
 
+func (o *DatabasePIIScanOutput) HasFindings() bool {
+	if o == nil {
+		return false
+	}
+	for _, columns := range o.Data {
+		for _, piidatas := range columns {
+			if len(piidatas) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type PIIDataWithWeightString struct {
 	Label            PIILabel
 	Confidence       string

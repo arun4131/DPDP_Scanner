@@ -43,19 +43,23 @@ const (
 	RunOption_DataScan
 	RunOption_DeepScan
 	RunOption_SpacyScan
+	RunOption_Auto
 
 	RunOption_MetaScan_String  = "metascan"
 	RunOption_DataScan_String  = "datascan"
 	RunOption_DeepScan_String  = "deepscan"
 	RunOption_SpacyScan_String = "spacyscan"
+	RunOption_Auto_String      = "auto"
 
 	RunOption_MetaScan_Title  = "Meta Scan"
 	RunOption_DataScan_Title  = "Data Scan"
 	RunOption_DeepScan_Title  = "Deep Scan"
 	RunOption_SpacyScan_Title = "Spacy Scan"
+	RunOption_Auto_Title      = "Auto Scan"
 
 	DEEPSCAN_WARNINING_LIMIT     = 100000
 	DEEPSCAN_SPACY_WARNING_LIMIT = 10000
+	AUTO_SCAN_ROW_THRESHOLD      = 10000
 
 	DetectorType_ColumnDetector DetectorType = "column detector"
 	DetectorType_ValueDetector  DetectorType = "value detector"
@@ -75,6 +79,7 @@ var RunOptionTitleMap = map[RunOption]string{
 	RunOption_DataScan:  RunOption_DataScan_Title,
 	RunOption_DeepScan:  RunOption_DeepScan_Title,
 	RunOption_SpacyScan: RunOption_SpacyScan_Title,
+	RunOption_Auto:      RunOption_Auto_Title,
 }
 
 var PiiEntitiesForWeightMergeLogic = utils.NewSetFromSlice([]PIILabel{
@@ -107,11 +112,13 @@ var PiiEntitiesForWeightMergeLogic = utils.NewSetFromSlice([]PIILabel{
 	PIILabel_SEBIRegistration,
 	PIILabel_RationCard,
 })
+
 var RunOptionMap = map[string]RunOption{
 	RunOption_MetaScan_String:  RunOption_MetaScan,
 	RunOption_DataScan_String:  RunOption_DataScan,
 	RunOption_DeepScan_String:  RunOption_DeepScan,
 	RunOption_SpacyScan_String: RunOption_SpacyScan,
+	RunOption_Auto_String:      RunOption_Auto,
 }
 
 func RunOptionSlice() []string {

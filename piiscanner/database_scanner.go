@@ -48,9 +48,7 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 		useSpacy = true
 		runOption = RunOption_DataScan_String
 		printAllResults = true
-	} else if runOption == RunOption_DeepScan_String {
-                useSpacy = true
-        }
+	}
 
 	if spacyOnly {
 		// incase of spacy only we will run data scan only and that also with spacy
@@ -187,7 +185,7 @@ func (d *databasePiiScanner) GetTables(ctx context.Context) ([]string, error) {
 func (d *databasePiiScanner) Scan(ctx context.Context) error {
 
 	if d.cnf.runOption == RunOption_DeepScan {
-		fmt.Println(text.FgCyan.Sprint("Scanning all rows may take a considerable amount of time. To speed up"))
+		fmt.Println(text.FgCyan.Sprint("For huge databases, scanning all rows may take a considerable amount of time. To speed up"))
 		fmt.Println(text.FgCyan.Sprint("the process, consider using the 'datascan' option, which will scan only"))
 		fmt.Println(text.FgCyan.Sprint("10,000 rows per table"))
 		fmt.Println()
@@ -423,18 +421,35 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 
 	coloredTableName := text.Bold.Sprint(p.tableName)
 
-	var bar *progressbar.ProgressBar
-	var barchan chan struct{}
-	if p.runOption == RunOption_DeepScan || p.runOption == RunOption_SpacyScan {
-		rowCount, err := utils.TableRowCount(p.store, p.tableName)
+	effectiveOption := p.runOption
+	var rowCount int
+	if p.runOption == RunOption_Auto || p.runOption == RunOption_DataScan || p.runOption == RunOption_DeepScan || p.runOption == RunOption_SpacyScan {
+		rowCount, err = utils.TableRowCount(p.store, p.tableName)
 		if err != nil {
 			return fmt.Errorf("error getting row count for table %s: %v", p.tableName, err)
 		}
 		if rowCount == 0 {
 			return nil
 		}
+	}
 
-		if !yesToAll && rowCount > DEEPSCAN_WARNINING_LIMIT && p.runOption == RunOption_DeepScan {
+	if p.runOption == RunOption_Auto {
+		if rowCount < AUTO_SCAN_ROW_THRESHOLD {
+			effectiveOption = RunOption_DeepScan
+			fmt.Println(">", coloredTableName, "has", rowCount, "rows - below threshold of", AUTO_SCAN_ROW_THRESHOLD, "rows, running deep scan")
+		} else {
+			effectiveOption = RunOption_DataScan
+		}
+	}
+
+	if p.runOption == RunOption_DataScan && rowCount < AUTO_SCAN_ROW_THRESHOLD {
+		fmt.Println(">", coloredTableName, "has", rowCount, "rows - Data scan may miss results on tables this small; omit --piiscanner or use --piiscanner deepscan for a full scan")
+	}
+
+	var bar *progressbar.ProgressBar
+	var barchan chan struct{}
+	if effectiveOption == RunOption_DeepScan || effectiveOption == RunOption_SpacyScan {
+		if !yesToAll && rowCount > DEEPSCAN_WARNINING_LIMIT && effectiveOption == RunOption_DeepScan {
 			fmt.Print("> ", coloredTableName, " has ", rowCount, " rows. Do you want to continue? (yes=Y | no=N | yes to all=A) : ")
 			var input string
 			fmt.Scanln(&input) //nolint:errcheck
@@ -487,7 +502,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 	}
 
 	query := fmt.Sprintf(`SELECT "%s" FROM %s`, strings.Join(columns, `","`), p.tableName)
-	if p.runOption == RunOption_DataScan {
+	if effectiveOption == RunOption_DataScan {
 		query = fmt.Sprintf(`SELECT "%s" FROM %s TABLESAMPLE BERNOULLI (10) LIMIT 10000`, strings.Join(columns, `","`), p.tableName)
 	}
 

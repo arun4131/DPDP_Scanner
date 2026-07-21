@@ -39,18 +39,18 @@ type htmlReportData struct {
 }
 
 func CreateHTMLReport(i *DatabasePIIScanOutput, cnf Config, host string) {
-	if i == nil || len(i.Data) == 0 {
-		return
-	}
-
-	data := buildHTMLData(i, cnf, host)
-
 	f, err := os.Create("kshield_pii_report.html")
 	if err != nil {
 		fmt.Println("Error creating HTML report:", err)
 		return
 	}
 	defer f.Close()
+
+	if !i.HasFindings() {
+		return
+	}
+
+	data := buildHTMLData(i, cnf, host)
 
 	tmpl, err := template.New("report").Parse(htmlReportTemplate)
 	if err != nil {

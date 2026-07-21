@@ -32,10 +32,6 @@ func printTerminalOutputTable(i *DatabasePIIScanOutput, cnf Config) {
 }
 
 func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config) {
-	if !i.HasFindings() {
-		return
-	}
-
 	highConfidenceFile, err := os.Create("kshield_pii_highconfidence.log")
 	if err != nil {
 		fmt.Println("Error creating high confidence log file: ", text.FgRed.Sprint(err))
@@ -49,6 +45,10 @@ func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config) {
 		return
 	}
 	defer lowConfidenceFile.Close()
+
+	if !i.HasFindings() {
+		return
+	}
 
 	GenerateTabularOutput(highConfidenceFile, i, cnf, "High")
 	GenerateTabularOutput(lowConfidenceFile, i, cnf, "Medium|Low")

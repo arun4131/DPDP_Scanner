@@ -4,6 +4,14 @@ import "context"
 
 type PIILabel string
 
+// ColumnContext contains all PII labels detected from the column name.
+// Example:
+//
+//	aadhaar_raw  -> {AdharcardNumber: true}
+//	uan_number   -> {UAN: true}
+//	pan_number   -> {PANNumber: true}
+type ColumnContext map[PIILabel]bool
+
 const (
 	PIILabel_Name        PIILabel = "Name"
 	PIILabel_Email       PIILabel = "Email"
@@ -44,48 +52,40 @@ const (
 	PIILabel_PANNumber PIILabel = "PANNumber"
 
 	// PIILabel_AdharcardNumber is pii label for Adharcard number.
-	// currently we are only supporting for india. for this we have column regex only.
-	// value regexs are clash with phone number.
+	// currently we are only supporting for india.
 	PIILabel_AdharcardNumber PIILabel = "AdharcardNumber"
 
 	// PIILabel_DrivingLicenceNumber is pii label for Driving Licence number.
-	// currently we are only supporting for india. for this we have column and value regex both for india
 	PIILabel_DrivingLicenceNumber PIILabel = "DrivingLicenceNumber"
 
 	// PIILabel_GSTIN is pii label for GSTIN number.
 	PIILabel_GSTIN PIILabel = "GSTIN"
 
 	// PIILabel_ChequeNumber is the PII label for cheque numbers.
-	// Currently supported for India.
-	// Detection is based on column name + value length (6 digits).
 	PIILabel_ChequeNumber PIILabel = "ChequeNumber"
 
 	// PIILabel_CIFNumber is the PII label for Customer Information File (CIF) number.
-	// Currently supported for India.
 	PIILabel_CIFNumber PIILabel = "CIFNumber"
 
 	// PIILabel_LoanAccountNumber is the PII label for loan account numbers.
-	// Currently supported for India.
 	PIILabel_LoanAccountNumber PIILabel = "LoanAccountNumber"
 
 	// PIILabel_InsurancePolicyNumber is the PII label for insurance policy numbers.
-	// Currently supported for India.
 	PIILabel_InsurancePolicyNumber PIILabel = "InsurancePolicyNumber"
 
 	// PIILabel_FASTagID is the PII label for FASTag identifiers.
-	// Currently supported for India.
 	PIILabel_FASTagID PIILabel = "FASTagID"
 
 	// PIILabel_VehicleNumber is pii label for Vehicle number.
-	// currently we have only value regex for india.
 	PIILabel_VehicleNumber PIILabel = "VehicleNumber"
 
 	// PIILabel_VoterID is pii label for Voter ID.
-	// currently we have only value regex for india.
 	PIILabel_VoterID        PIILabel = "VoterID"
 	PIILabel_PassportNumber PIILabel = "PassportNumber"
+
 	// PIILabel_IFSC is pii label for Indian Financial System Code.
 	PIILabel_IFSC PIILabel = "IFSC"
+
 	// PIILabel_ESIC is the PII label for Employee State Insurance Corporation number.
 	PIILabel_ESIC PIILabel = "ESIC"
 
@@ -96,29 +96,25 @@ const (
 	PIILabel_SEBIRegistration PIILabel = "SEBIRegistration"
 )
 
-// Detector is an interface that defines the methods that a PII detector should implement.
-// - The Init method is used to initialize the detector.
-// - The Detect method is used to detect the PII data in the given word.
-//
-// Detector can be of two types:
-// - ValueDetector: Detects the PII data in the value.
-// - ColumnDetector: Detects the PII data in the column.
-// The ValueDetector and ColumnDetector are used to detect the PII data in the value and column respectively.
+// Detector is implemented by both value detectors and column detectors.
 type Detector interface {
 	Name() string
 
-	// Init is a function that triggers initialization of the detector.
+	// Init initializes the detector.
 	Init() error
 
-	// Detect is a function that takes a word as input and detects the PII data in the word.
-	// if it is ValueDetector, then the word in input will be considered as value from query.
-	// if it is ColumnDetector, then the word in input will be considered as column from query.
+	// Detect detects PII in the supplied word.
 	//
-	// e.g
-	// 		Query: SELECT name, email FROM users WHERE name = 'John Doe' AND email = 'somethig@gmail.com';
-	// 		Word: 'name' is column and 'John Doe' is value.
-	// 		Word: 'email' is column and 'something@gmail.com' is value.
-	Detect(ctx context.Context, word string, hasColumnContext bool) ([]PiiLabelWithWeight, error)
+	// If this detector is a value detector, word is a value.
+	// If this detector is a column detector, word is a column name.
+	//
+	// columnContext contains all labels detected from the column name.
+	//
+	// Example:
+	//   aadhaar_raw  -> {AdharcardNumber:true}
+	//   uan_number   -> {UAN:true}
+	//   pan_number   -> {PANNumber:true}
+	Detect(ctx context.Context, word string, columnContext ColumnContext) ([]PiiLabelWithWeight, error)
 }
 
 type PiiLabelWithWeight struct {

@@ -137,7 +137,7 @@ func main() {
 			if predicted == "NEG" && spacyErr == nil && (expected == "Name" || expected == "Address") {
 				if isSpacyColumn(col) {
 					t = time.Now()
-					spacyLabels, err := spacyDet.Detect(context.Background(), value, true)
+					spacyLabels, err := spacyDet.Detect(context.Background(), value, nil)
 					spacyDuration += time.Since(t)
 					spacyCalls++
 					if err == nil && len(spacyLabels) > 0 {
@@ -153,7 +153,7 @@ func main() {
 		} else {
 			// Run regex value detector
 			t := time.Now()
-			labels, err := valDetector.Detect(context.Background(), value, false)
+			labels, err := valDetector.Detect(context.Background(), value, nil)
 			regexDuration += time.Since(t)
 			if err != nil {
 				log.Fatal(err)

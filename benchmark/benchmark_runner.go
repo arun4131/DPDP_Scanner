@@ -23,7 +23,7 @@ var columnContextEntities = map[string]string{
 	"RationCard":            "ration_card",
 	"BirthDate":             "date_of_birth",
 	"Location":              "latitude",
-        "ABHANumber":            "abha_number",
+	"ABHANumber":            "abha_number",
 }
 
 func main() {
@@ -78,7 +78,7 @@ func main() {
 				predicted = string(label)
 			}
 		} else {
-			labels, err := valDetector.Detect(context.Background(), value, false)
+			labels, err := valDetector.Detect(context.Background(), value, nil)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -286,7 +286,7 @@ func (t *TableScanManager) PushColumn(ctx context.Context, input ScanInput) (err
 		return fmt.Errorf("no column detector available")
 	}
 
-	labels, err := t.columnDetector.Detect(ctx, input.ColumnName, false)
+	labels, err := t.columnDetector.Detect(ctx, input.ColumnName, nil)
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,7 @@ func (p *PiiScanner) Detect(ctx context.Context, column, value string) (PIILabel
 	// get label from all column detectors and store them in a map
 	columnLabels := make(map[PIILabel]struct{})
 	for _, d := range p.columnDetector {
-		labels, err := d.Detect(ctx, column, false)
+		labels, err := d.Detect(ctx, column, nil)
 		if err != nil {
 			return "", err
 		}
@@ -96,11 +96,14 @@ func (p *PiiScanner) Detect(ctx context.Context, column, value string) (PIILabel
 
 	// get label from all value detectors and store them in a map
 
-	hasColumnContext := len(columnLabels) > 0
+	columnContext := make(ColumnContext)
+	for label := range columnLabels {
+		columnContext[label] = true
+	}
 
 	valueLabels := make(map[PIILabel]struct{})
 	for _, d := range p.valueDetector {
-		labels, err := d.Detect(ctx, value, hasColumnContext)
+		labels, err := d.Detect(ctx, value, columnContext)
 		if err != nil {
 			return "", err
 		}

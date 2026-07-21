@@ -55,7 +55,7 @@ func TestSpacyDetector(t *testing.T) {
 		"test", "123", "tera", "tew", "1234", "563445", "3652", "2563", "test", "123", "tera", "tew", "1234", "563445", "3652", "2563", "6536",
 		"test", "123", "tera", "tew", "1234", "563445", "3652", "2563", "test", "123", "tera", "tew", "1234", "563445", "3652", "2563", "6536"}
 	for _, input := range inputs {
-		piiLabel, err := spacyDetector.Detect(context.TODO(), input, false)
+		piiLabel, err := spacyDetector.Detect(context.TODO(), input, nil)
 		if err != nil {
 			t.Errorf("Error while processing input %v", err)
 			return
@@ -79,7 +79,7 @@ func SpacyLabelTestHelper(t *testing.T, inputs *[]string, label PIILabel) {
 	}
 
 	for _, input := range *inputs {
-		piiLabel, err := spacyDetector.Detect(context.TODO(), input, false)
+		piiLabel, err := spacyDetector.Detect(context.TODO(), input, nil)
 		if err != nil {
 			t.Errorf("Error while processing input %v", err)
 			return
@@ -106,7 +106,7 @@ func SpacyLabelTestPercentageHelper(t *testing.T, inputs *[]string, label PIILab
 
 	num_correct := 0
 	for _, input := range *inputs {
-		piiLabel, err := spacyDetector.Detect(context.TODO(), input, false)
+		piiLabel, err := spacyDetector.Detect(context.TODO(), input, nil)
 		if err != nil {
 			t.Errorf("Error while processing input %v", err)
 			return
@@ -182,7 +182,7 @@ func SpacyLabelTestPercentageFromCSVHelper(t *testing.T, col_name string, label 
 
 		// Check label detection
 		input := record[i]
-		piiLabel, err := spacyDetector.Detect(context.TODO(), input, false)
+		piiLabel, err := spacyDetector.Detect(context.TODO(), input, nil)
 		if err != nil {
 			t.Fatalf("Error while processing input %v", err)
 		}
@@ -267,7 +267,7 @@ func SpacyFullNameTestPercentageFromCSVHelper(t *testing.T) {
 
 		// Check label detection
 		input := record[i1] + " " + record[i2]
-		piiLabel, err := spacyDetector.Detect(context.TODO(), input, false)
+		piiLabel, err := spacyDetector.Detect(context.TODO(), input, nil)
 		if err != nil {
 			t.Fatalf("Error while processing input %v", err)
 		}

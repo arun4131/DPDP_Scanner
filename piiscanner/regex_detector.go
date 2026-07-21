@@ -141,8 +141,8 @@ func gstinValid(gstin string) bool {
 // list of regexes.
 
 type baseRegexDetector struct {
-	m map[PIILabel][]RegexWithWeight
-        isColumnDetector bool
+	m                map[PIILabel][]RegexWithWeight
+	isColumnDetector bool
 }
 
 func (r *baseRegexDetector) Name() string {
@@ -181,7 +181,7 @@ func (r *baseRegexDetector) filterByRegion(region string) {
 
 // Detect checks the word against all regexes for each PIILabel and
 // returns the first match.
-func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnContext bool) ([]PiiLabelWithWeight, error) {
+func (r *baseRegexDetector) Detect(ctx context.Context, word string, columnContext ColumnContext) ([]PiiLabelWithWeight, error) {
 	if r.m == nil {
 		return nil, fmt.Errorf("regex detector not initialized")
 	}
@@ -192,84 +192,86 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, hasColumnCo
 
 	for label, regexes := range r.m {
 		for _, v := range regexes {
-			if v.RequiresColumnContext && !hasColumnContext {
-				continue
-			}
-			if label == PIILabel_IPAddress {
-
-				matches := v.Regexp.FindStringSubmatch(word)
-
-				if len(matches) == 0 {
+			if v.RequiresColumnContext {
+				if columnContext == nil || !columnContext[label] {
 					continue
 				}
-
-				matchedIP := matches[0]
-				if len(matches) > 1 {
-					matchedIP = matches[1]
-				}
-
-				valid := false
-
-				if strings.Contains(matchedIP, ".") {
-					valid = ipv4Valid(matchedIP)
-				} else {
-					valid = ipv6Valid(matchedIP)
-				}
-
-				if !valid {
-					continue
-				}
-
-				out = append(out, PiiLabelWithWeight{
-					PIILabel: label,
-					Weight:   v.Weight,
-				})
-
-				break
 			}
+                        if label == PIILabel_IPAddress {
+
+    if !r.isColumnDetector {
+        matches := v.Regexp.FindStringSubmatch(word)
+
+        if len(matches) == 0 {
+            continue
+        }
+
+        matchedIP := matches[0]
+        if len(matches) > 1 {
+            matchedIP = matches[1]
+        }
+
+        valid := false
+
+        if strings.Contains(matchedIP, ".") {
+            valid = ipv4Valid(matchedIP)
+        } else {
+            valid = ipv6Valid(matchedIP)
+        }
+
+        if !valid {
+            continue
+        }
+    } else {
+        if !v.Regexp.MatchString(word) {
+            continue
+        }
+    }
+
+    out = append(out, PiiLabelWithWeight{
+        PIILabel: label,
+        Weight:   v.Weight,
+    })
+
+    break
+}
 			if v.Regexp.MatchString(word) {
-                 
-                            if !r.isColumnDetector {
+				matched := v.Regexp.FindString(word)
+				if !r.isColumnDetector {
 
-				if label == PIILabel_CreditCard {
+					if label == PIILabel_CreditCard {
+						cleaned := strings.NewReplacer(
+							" ", "",
+							"-", "",
+							"+", "",
+						).Replace(matched)
 
-					cleaned := strings.NewReplacer(
-						" ", "",
-						"-", "",
-						"+", "",
-					).Replace(word)
-
-					if !luhnValid(cleaned) {
-						continue
+						if !luhnValid(cleaned) {
+							continue
+						}
 					}
-				}
-				if label == PIILabel_AdharcardNumber {
+					if label == PIILabel_AdharcardNumber {
+						cleaned := strings.NewReplacer(
+							" ", "",
+							"-", "",
+						).Replace(matched)
 
-					cleaned := strings.NewReplacer(
-						" ", "",
-						"-", "",
-					).Replace(word)
+						if !verhoeffValid(cleaned) {
+							continue
+						}
+					}
+					if label == PIILabel_GSTIN {
+						cleaned := strings.ToUpper(strings.TrimSpace(matched))
+						if !gstinValid(cleaned) {
+							continue
+						}
+					}
+					if label == PIILabel_MacAddress {
 
-					if !verhoeffValid(cleaned) {
-						continue
+						if _, err := net.ParseMAC(matched); err != nil {
+							continue
+						}
 					}
-				}
-				if label == PIILabel_GSTIN {
-					cleaned := strings.ToUpper(strings.TrimSpace(word))
-					if !gstinValid(cleaned) {
-						continue
-					}
-				}
-				if label == PIILabel_MacAddress {
-					matchedMAC := v.Regexp.FindString(word)
-					if matchedMAC == "" {
-						continue
-					}
-
-					if _, err := net.ParseMAC(matchedMAC); err != nil {
-						continue
-					}
-                                    }
 				} // end !r.isColumnDetector
 				out = append(out, PiiLabelWithWeight{
 					PIILabel: label,
@@ -303,7 +305,7 @@ func NewRegexColumnDetector() Detector {
 // Use RegionIndia, RegionUS, RegionUK, or empty string for all regions.
 func NewRegexColumnDetectorForRegion(region string) Detector {
 	return &regexColumnDetector{
-                baseRegexDetector: &baseRegexDetector{isColumnDetector: true},  // ← add flag
+		baseRegexDetector: &baseRegexDetector{isColumnDetector: true}, // ← add flag
 		region:            region,
 	}
 }
@@ -366,7 +368,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_Phone: {
 			{
 				// High confidence - exact phone/mobile/telephone column names
-				Regexp: regexp.MustCompile(`(?i)^(phone|phone[\s_-]?number|phone[\s_-]?no|phone[\s_-]?num|phone[\s_-]?id|ph[\s_-]?number|ph[\s_-]?no|mobile|mobile[\s_-]?number|mobile[\s_-]?no|mobile[\s_-]?num|mobile[\s_-]?phone|mobile[\s_-]?contact|cell|cell[\s_-]?phone|cellphone|cell[\s_-]?number|contact[\s_-]?number|contact[\s_-]?no|contact[\s_-]?phone|telephone|tele[\s_-]?phone|telephone[\s_-]?number|telephone[\s_-]?no|telephone[\s_-]?num|tele[\s_-]?phone[\s_-]?number|tele[\s_-]?phone[\s_-]?no|tele[\s_-]?phone[\s_-]?num|tel|tel[\s_-]?number|tel[\s_-]?no|tel[\s_-]?num|landline|land[\s_-]?line|landline[\s_-]?number|office[\s_-]?phone|home[\s_-]?phone|work[\s_-]?phone|business[\s_-]?phone|company[\s_-]?phone|personal[\s_-]?phone|primary[\s_-]?phone|secondary[\s_-]?phone|alternate[\s_-]?phone|alt[\s_-]?phone|emergency[\s_-]?contact|emergency[\s_-]?phone)$`),
+				Regexp: regexp.MustCompile(`(?i)^(phone|phone[\s_-]?number|phone[\s_-]?no|phone[\s_-]?num|phone[\s_-]?id|ph[\s_-]?number|ph[\s_-]?no|mobile|mobile[\s_-]?number|mobile[\s_-]?no|mobile[\s_-]?num|mobile[\s_-]?phone|mobile[\s_-]?contact|cell|cell[\s_-]?phone|cellphone|cell[\s_-]?number|contact[\s_-]?number|contact[\s_-]?no|contact[\s_-]?phone|telephone|tele[\s_-]?phone|telephone[\s_-]?number|telephone[\s_-]?no|telephone[\s_-]?num|tele[\s_-]?phone[\s_-]?number|tele[\s_-]?phone[\s_-]?no|tele[\s_-]?phone[\s_-]?num|tel|tel[\s_-]?number|tel[\s_-]?no|tel[\s_-]?num|landline|land[\s_-]?line|landline[\s_-]?number|office[\s_-]?phone|home[\s_-]?phone|work[\s_-]?phone|business[\s_-]?phone|company[\s_-]?phone|personal[\s_-]?phone|primary[\s_-]?phone|secondary[\s_-]?phone|alternate[\s_-]?phone|alt[\s_-]?phone|emergency[\s_-]?contact|emergency[\s_-]?phone|contact)$`),
 				Weight: 1.0,
 			},
 			{
@@ -383,7 +385,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_IPAddress: {
 			{
 				// High confidence - exact IP address column names
-				Regexp: regexp.MustCompile(`(?i)^(ip|ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)$`),
+                                Regexp: regexp.MustCompile(`(?i)^(ip|ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|ipv4[\s_-]?address|ipv6[\s_-]?address|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)$`),
 				Weight: 1.0,
 			},
 			{
@@ -422,12 +424,12 @@ func (r *regexColumnDetector) Init() error {
 			},
 			{
 				// Medium confidence - common address/location aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(address|addr|address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|street[\s_-]?address|street[\s_-]?name|road[\s_-]?name|locality|location|area|region|district|sub[\s_-]?district|village|town|city|municipality|state|province|county|country|territory|zone|borough|ward|sector|block|building[\s_-]?name|house[\s_-]?number|flat[\s_-]?number|apartment[\s_-]?number|suite|unit[\s_-]?number|door[\s_-]?number|plot[\s_-]?number|survey[\s_-]?number|landmark|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
+                                Regexp: regexp.MustCompile(`(?i)\b(address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|street[\s_-]?address|street[\s_-]?name|road[\s_-]?name|locality|location|area|region|district|sub[\s_-]?district|village|town|city|municipality|state|province|county|country|territory|zone|borough|ward|sector|block|building[\s_-]?name|house[\s_-]?number|flat[\s_-]?number|apartment[\s_-]?number|suite|unit[\s_-]?number|door[\s_-]?number|plot[\s_-]?number|survey[\s_-]?number|landmark|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
 				Weight: 0.5,
 			},
 			{
 				// Low confidence - broad fallback
-				Regexp: regexp.MustCompile(`(?i)^.*(address|addr|street|road|locality|location|area|district|city|state|province|county|country|borough|postal[\s_-]?address|mailing[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address).*$`),
+                                Regexp: regexp.MustCompile(`(?i)^.*(street|road|locality|location|area|district|city|state|province|county|country|borough|postal[\s_-]?address|mailing[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address).*$`),
 				Weight: 0.3,
 			},
 		},
@@ -542,7 +544,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_OAuthToken: {
 			{
 				// High confidence - exact OAuth token related column names
-				Regexp: regexp.MustCompile(`(?i)^(oauth|oauth[\s_-]?token|oauth[\s_-]?access[\s_-]?token|oauth[\s_-]?refresh[\s_-]?token|oauth[\s_-]?bearer[\s_-]?token|oauth[\s_-]?id[\s_-]?token|oauth[\s_-]?token[\s_-]?secret|oauth[\s_-]?consumer[\s_-]?key|oauth[\s_-]?consumer[\s_-]?secret|oauth[\s_-]?client[\s_-]?id|oauth[\s_-]?client[\s_-]?secret|oauth[\s_-]?verifier|oauth[\s_-]?verifier[\s_-]?secret|oauth[\s_-]?code|oauth[\s_-]?authorization[\s_-]?code|oauth[\s_-]?grant[\s_-]?token|oauth[\s_-]?credential|oauth[\s_-]?credentials|oauth[\s_-]?session[\s_-]?token|oauth[\s_-]?auth[\s_-]?token|oauth[\s_-]?auth[\s_-]?code|oauth[\s_-]?token[\s_-]?value|oauth[\s_-]?token[\s_-]?id|oauth[\s_-]?access[\s_-]?key|oauth[\s_-]?secret)$`),
+                                Regexp: regexp.MustCompile(`(?i)^(oauth|oauth[\s_-]?token|oauth[\s_-]?access[\s_-]?token|oauth[\s_-]?refresh[\s_-]?token|oauth[\s_-]?bearer[\s_-]?token|oauth[\s_-]?id[\s_-]?token|oauth[\s_-]?token[\s_-]?secret|oauth[\s_-]?consumer[\s_-]?key|oauth[\s_-]?consumer[\s_-]?secret|oauth[\s_-]?client[\s_-]?id|oauth[\s_-]?client[\s_-]?secret|oauth[\s_-]?verifier|oauth[\s_-]?verifier[\s_-]?secret|oauth[\s_-]?code|oauth[\s_-]?authorization[\s_-]?code|oauth[\s_-]?grant[\s_-]?token|oauth[\s_-]?credential|oauth[\s_-]?credentials|oauth[\s_-]?session[\s_-]?token|oauth[\s_-]?auth[\s_-]?token|oauth[\s_-]?auth[\s_-]?code|oauth[\s_-]?token[\s_-]?value|oauth[\s_-]?token[\s_-]?id|oauth[\s_-]?access[\s_-]?key|oauth[\s_-]?secret|access[\s_-]?token|accesstoken|refresh[\s_-]?token|refreshtoken|bearer[\s_-]?token|id[\s_-]?token|user[\s_-]?token|usertoken|auth[\s_-]?token|google[\s_-]?token|google[\s_-]?auth[\s_-]?token|google[\s_-]?token[\s_-]?id|google[\s_-]?tokenid|google[\s_-]?auth[\s_-]?token[\s_-]?id|google[\s_-]?auth[\s_-]?tokenid|token[\s_-]?id|tokenid|token)$`),
 				Weight: 1.0,
 			},
 			{
@@ -559,7 +561,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_Nationality: {
 			{
 				// High confidence - exact nationality related column names
-				Regexp: regexp.MustCompile(`(?i)^(nationality|nationality[\s_-]?code|nationality[\s_-]?id|nationality[\s_-]?type|nationality[\s_-]?status|nationality[\s_-]?name|nationality[\s_-]?value|nationality[\s_-]?desc|nationality[\s_-]?description|country[\s_-]?of[\s_-]?nationality|citizenship|citizen[\s_-]?ship|citizenship[\s_-]?status|citizenship[\s_-]?type|citizenship[\s_-]?code|citizenship[\s_-]?country|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?status|national[\s_-]?identity|national[\s_-]?origin|country[\s_-]?origin|origin[\s_-]?country)$`),
+                                Regexp: regexp.MustCompile(`(?i)^(nationality|nationality[\s_-]?code|nationality[\s_-]?id|nationality[\s_-]?type|nationality[\s_-]?status|nationality[\s_-]?name|nationality[\s_-]?value|nationality[\s_-]?desc|nationality[\s_-]?description|country[\s_-]?of[\s_-]?nationality|citizenship|citizen[\s_-]?ship|citizenship[\s_-]?status|citizenship[\s_-]?type|citizenship[\s_-]?code|citizenship[\s_-]?country|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?status|national[\s_-]?identity|national[\s_-]?origin|country[\s_-]?origin|origin[\s_-]?country|user[\s_-]?nationality)$`),
 				Weight: 1.0,
 			},
 			{
@@ -1123,12 +1125,26 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_AdharcardNumber: {
 			{
+				// Plain 12 digits
 				Regexp: regexp.MustCompile(`\b\d{12}\b`),
 				Weight: 0.8,
 				Region: RegionIndia,
 			},
 			{
+				// With space or dash separators: 2345 6789 0123 or 2345-6789-0123
 				Regexp: regexp.MustCompile(`\b\d{4}[- ]\d{4}[- ]\d{4}\b`),
+				Weight: 0.8,
+				Region: RegionIndia,
+			},
+			{
+				// Parentheses format: (2345) 6789 0123
+				Regexp: regexp.MustCompile(`\(\d{4}\)\s\d{4}\s\d{4}`),
+				Weight: 0.8,
+				Region: RegionIndia,
+			},
+			{
+				// Mixed separators: 2345.6789.0123
+				Regexp: regexp.MustCompile(`\b\d{4}[.\s_-]\d{4}[.\s_-]\d{4}\b`),
 				Weight: 0.8,
 				Region: RegionIndia,
 			},
@@ -1271,9 +1287,10 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// India mobile - 91 prefix
-				Regexp: regexp.MustCompile(`\b91[6-9][0-9]{9}\b`),
-				Weight: 1.0,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`\b91[6-9][0-9]{9}\b`),
+				Weight:                1.0,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 			{
 				// India mobile - +91 prefix

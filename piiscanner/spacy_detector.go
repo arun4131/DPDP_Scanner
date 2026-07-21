@@ -260,7 +260,7 @@ func (u *spacyDetector) detectWorkingDir() (string, error) {
 //
 // This will pass the input word to python script and get the
 // PII labels related to the input.
-func (u *spacyDetector) Detect(ctx context.Context, word string, hasColumnContext bool) ([]PiiLabelWithWeight, error) {
+func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext ColumnContext) ([]PiiLabelWithWeight, error) {
 	// Process the input word and get the PII labels related to the input.
 	// This will pass the input word to python script and get the PII labels
 	// related to the input.

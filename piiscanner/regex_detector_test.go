@@ -73,7 +73,7 @@ func Test_CsvTesting_RegexpDetector(t *testing.T) {
 				continue
 			}
 
-			labels, err := d.Detect(context.Background(), data[1], false)
+			labels, err := d.Detect(context.Background(), data[1], nil)
 			if err != nil {
 				t.Errorf("Expected no error, got %v, file %s:%d", err, file.Name(), line)
 				continue

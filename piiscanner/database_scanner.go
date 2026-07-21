@@ -503,7 +503,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 
 	query := fmt.Sprintf(`SELECT "%s" FROM %s`, strings.Join(columns, `","`), p.tableName)
 	if effectiveOption == RunOption_DataScan {
-		query = fmt.Sprintf(`SELECT "%s" FROM %s TABLESAMPLE BERNOULLI (10) LIMIT 10000`, strings.Join(columns, `","`), p.tableName)
+		query = fmt.Sprintf(`SELECT "%s" FROM %s TABLESAMPLE BERNOULLI (10) REPEATABLE (%d) LIMIT 10000`, strings.Join(columns, `","`), p.tableName, DATASCAN_SAMPLE_SEED)
 	}
 
 	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 1"))

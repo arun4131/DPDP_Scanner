@@ -60,6 +60,7 @@ const (
 	DEEPSCAN_WARNINING_LIMIT     = 100000
 	DEEPSCAN_SPACY_WARNING_LIMIT = 10000
 	AUTO_SCAN_ROW_THRESHOLD      = 10000
+	DATASCAN_SAMPLE_SEED         = 42
 
 	DetectorType_ColumnDetector DetectorType = "column detector"
 	DetectorType_ValueDetector  DetectorType = "value detector"

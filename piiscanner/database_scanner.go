@@ -141,7 +141,7 @@ type databasePiiScanner struct {
 
 	cnf *Config
 
-	stopSpinner func()
+	spinner *scanningSpinner
 }
 
 func NewDatabasePiiScanner(h DBHelper, store *sql.DB, cnf *Config) *databasePiiScanner {
@@ -153,21 +153,20 @@ func NewDatabasePiiScanner(h DBHelper, store *sql.DB, cnf *Config) *databasePiiS
 }
 
 func (d *databasePiiScanner) Close() {
-	if d.stopSpinner != nil {
-		d.stopSpinner()
+	if d.spinner != nil {
+		d.spinner.Stop()
 	}
 }
 
 func (d *databasePiiScanner) pauseSpinner() {
-	if d.stopSpinner != nil {
-		d.stopSpinner()
-		d.stopSpinner = nil
+	if d.spinner != nil {
+		d.spinner.Pause()
 	}
 }
 
 func (d *databasePiiScanner) resumeSpinner() {
-	if d.stopSpinner == nil {
-		d.stopSpinner = startScanningSpinner(3 * time.Second)
+	if d.spinner != nil {
+		d.spinner.Resume()
 	}
 }
 
@@ -203,22 +202,25 @@ func (d *databasePiiScanner) GetTables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func startScanningSpinner(delay time.Duration) func() {
-	done := make(chan struct{})
-	exited := make(chan struct{})
-	var once sync.Once
-	stop := func() {
-		once.Do(func() {
-			close(done)
-		})
-		<-exited
+type scanningSpinner struct {
+	mu        sync.Mutex
+	paused    bool
+	done      chan struct{}
+	stopped   chan struct{}
+	closeOnce sync.Once
+}
+
+func startScanningSpinner(delay time.Duration) *scanningSpinner {
+	s := &scanningSpinner{
+		done:    make(chan struct{}),
+		stopped: make(chan struct{}),
 	}
 
 	go func() {
-		defer close(exited)
+		defer close(s.stopped)
 
 		select {
-		case <-done:
+		case <-s.done:
 			return
 		case <-time.After(delay):
 		}
@@ -229,18 +231,46 @@ func startScanningSpinner(delay time.Duration) func() {
 
 		i := 0
 		for {
-			fmt.Printf("\r> Scanning %-8s", frames[i%len(frames)])
-			i++
 			select {
-			case <-done:
+			case <-s.done:
+				s.mu.Lock()
 				fmt.Print("\r" + strings.Repeat(" ", 20) + "\r")
+				s.mu.Unlock()
 				return
 			case <-ticker.C:
+				s.mu.Lock()
+				if !s.paused {
+					fmt.Printf("\r> Scanning %-8s", frames[i%len(frames)])
+					i++
+				}
+				s.mu.Unlock()
 			}
 		}
 	}()
 
-	return stop
+	return s
+}
+
+func (s *scanningSpinner) Pause() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.paused {
+		s.paused = true
+		fmt.Print("\r" + strings.Repeat(" ", 20) + "\r")
+	}
+}
+
+func (s *scanningSpinner) Resume() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.paused = false
+}
+
+func (s *scanningSpinner) Stop() {
+	s.closeOnce.Do(func() {
+		close(s.done)
+	})
+	<-s.stopped
 }
 
 func (d *databasePiiScanner) Scan(ctx context.Context) error {
@@ -276,7 +306,7 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 		}
 
 		fmt.Println("> Started table scan manager with", d.numOfRunners, "runners")
-		d.stopSpinner = startScanningSpinner(3 * time.Second)
+		d.spinner = startScanningSpinner(3 * time.Second)
 		return nil
 	})
 
@@ -356,8 +386,8 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 	}
 
 	data, err := d.tableScanManager.Output()
-	if d.stopSpinner != nil {
-		d.stopSpinner()
+	if d.spinner != nil {
+		d.spinner.Stop()
 	}
 	if err != nil {
 		return nil, err
@@ -507,14 +537,26 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 	if p.runOption == RunOption_Auto {
 		if rowCount < AUTO_SCAN_ROW_THRESHOLD {
 			effectiveOption = RunOption_DeepScan
+			if p.pauseSpinner != nil {
+				p.pauseSpinner()
+			}
 			fmt.Println(">", coloredTableName, "has", rowCount, "rows - below threshold of", AUTO_SCAN_ROW_THRESHOLD, "rows, running deep scan")
+			if p.resumeSpinner != nil {
+				p.resumeSpinner()
+			}
 		} else {
 			effectiveOption = RunOption_DataScan
 		}
 	}
 
 	if p.runOption == RunOption_DataScan && rowCount < AUTO_SCAN_ROW_THRESHOLD {
+		if p.pauseSpinner != nil {
+			p.pauseSpinner()
+		}
 		fmt.Println(">", coloredTableName, "has", rowCount, "rows - Data scan may miss results on tables this small; omit --piiscanner or use --piiscanner deepscan for a full scan")
+		if p.resumeSpinner != nil {
+			p.resumeSpinner()
+		}
 	}
 
 	var bar *progressbar.ProgressBar

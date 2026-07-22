@@ -158,6 +158,19 @@ func (d *databasePiiScanner) Close() {
 	}
 }
 
+func (d *databasePiiScanner) pauseSpinner() {
+	if d.stopSpinner != nil {
+		d.stopSpinner()
+		d.stopSpinner = nil
+	}
+}
+
+func (d *databasePiiScanner) resumeSpinner() {
+	if d.stopSpinner == nil {
+		d.stopSpinner = startScanningSpinner(3 * time.Second)
+	}
+}
+
 func (d *databasePiiScanner) WithNumOfRunners(n int) *databasePiiScanner {
 	d.numOfRunners = n
 	return d
@@ -192,14 +205,18 @@ func (d *databasePiiScanner) GetTables(ctx context.Context) ([]string, error) {
 
 func startScanningSpinner(delay time.Duration) func() {
 	done := make(chan struct{})
+	exited := make(chan struct{})
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {
 			close(done)
 		})
+		<-exited
 	}
 
 	go func() {
+		defer close(exited)
+
 		select {
 		case <-done:
 			return
@@ -274,7 +291,7 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 		}
 
 		// fmt.Println("> Processing table", table)
-		s := NewPiiTableScanner(d.h.UpdateTableName(table), d.store, d.tableScanManager, d.cnf.runOption, d.cnf.useSpacy)
+		s := NewPiiTableScanner(d.h.UpdateTableName(table), d.store, d.tableScanManager, d.cnf.runOption, d.cnf.useSpacy, d.pauseSpinner, d.resumeSpinner)
 		if err := s.processTable(ctx); err != nil {
 			return fmt.Errorf("error processing table %s: %v", table, err)
 		}
@@ -437,9 +454,12 @@ type piiTableScanner struct {
 	runOption RunOption
 
 	runSpacy bool
+
+	pauseSpinner  func()
+	resumeSpinner func()
 }
 
-func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *TableScanManager, runOption RunOption, runSpacy bool) *piiTableScanner {
+func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *TableScanManager, runOption RunOption, runSpacy bool, pauseSpinner, resumeSpinner func()) *piiTableScanner {
 	return &piiTableScanner{
 		tableName: tableName,
 		store:     store,
@@ -448,6 +468,9 @@ func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *Table
 
 		runOption: runOption,
 		runSpacy:  runSpacy,
+
+		pauseSpinner:  pauseSpinner,
+		resumeSpinner: resumeSpinner,
 	}
 }
 
@@ -497,7 +520,19 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 	var bar *progressbar.ProgressBar
 	var barchan chan struct{}
 	if effectiveOption == RunOption_DeepScan || effectiveOption == RunOption_SpacyScan {
-		if !yesToAll && rowCount > DEEPSCAN_WARNINING_LIMIT && effectiveOption == RunOption_DeepScan {
+		showsPrompt := !yesToAll && rowCount > DEEPSCAN_WARNINING_LIMIT && effectiveOption == RunOption_DeepScan
+		showsBar := (p.runSpacy && rowCount > DEEPSCAN_SPACY_WARNING_LIMIT) || rowCount > DEEPSCAN_WARNINING_LIMIT
+
+		if (showsPrompt || showsBar) && p.pauseSpinner != nil {
+			p.pauseSpinner()
+			defer func() {
+				if p.resumeSpinner != nil {
+					p.resumeSpinner()
+				}
+			}()
+		}
+
+		if showsPrompt {
 			fmt.Print("> ", coloredTableName, " has ", rowCount, " rows. Do you want to continue? (yes=Y | no=N | yes to all=A) : ")
 			var input string
 			fmt.Scanln(&input) //nolint:errcheck
@@ -509,7 +544,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 				return fmt.Errorf("invalid input")
 			}
 		}
-		if (p.runSpacy && rowCount > DEEPSCAN_SPACY_WARNING_LIMIT) || rowCount > DEEPSCAN_WARNINING_LIMIT {
+		if showsBar {
 			bar = progressbar.NewOptions(rowCount,
 				progressbar.OptionSetDescription("Processing "+p.tableName+" table"),
 				progressbar.OptionShowCount(),

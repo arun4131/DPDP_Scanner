@@ -132,6 +132,7 @@ func main() {
 			store.Close()
 
 			if err != nil {
+				scanner.Close()
 				log.Printf("  [SKIP] Scan error: %v", err)
 				continue
 			}

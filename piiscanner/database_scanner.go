@@ -140,6 +140,8 @@ type databasePiiScanner struct {
 	numOfRunners int
 
 	cnf *Config
+
+	stopSpinner func()
 }
 
 func NewDatabasePiiScanner(h DBHelper, store *sql.DB, cnf *Config) *databasePiiScanner {
@@ -147,6 +149,12 @@ func NewDatabasePiiScanner(h DBHelper, store *sql.DB, cnf *Config) *databasePiiS
 		h: h, store: store,
 		numOfRunners: runtime.NumCPU(),
 		cnf:          cnf,
+	}
+}
+
+func (d *databasePiiScanner) Close() {
+	if d.stopSpinner != nil {
+		d.stopSpinner()
 	}
 }
 
@@ -182,6 +190,42 @@ func (d *databasePiiScanner) GetTables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
+func startScanningSpinner(delay time.Duration) func() {
+	done := make(chan struct{})
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			close(done)
+		})
+	}
+
+	go func() {
+		select {
+		case <-done:
+			return
+		case <-time.After(delay):
+		}
+
+		frames := []string{"", ".", ". .", ". . ."}
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+
+		i := 0
+		for {
+			fmt.Printf("\r> Scanning %-8s", frames[i%len(frames)])
+			i++
+			select {
+			case <-done:
+				fmt.Print("\r" + strings.Repeat(" ", 20) + "\r")
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+
+	return stop
+}
+
 func (d *databasePiiScanner) Scan(ctx context.Context) error {
 
 	if d.cnf.runOption == RunOption_DeepScan {
@@ -201,7 +245,7 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 		return nil
 	}
 
-	fmt.Println("> Found", len(tables), "tables.")
+	fmt.Println("> Found", len(tables), "tables")
 
 	d.tableScanManager = NewTableScanManager().WithColumnDetector(NewRegexColumnDetector())
 	if d.cnf.runOption != RunOption_MetaScan {
@@ -214,7 +258,8 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 			return err
 		}
 
-		fmt.Println("> Started table scan manager with", d.numOfRunners, "runners.")
+		fmt.Println("> Started table scan manager with", d.numOfRunners, "runners")
+		d.stopSpinner = startScanningSpinner(3 * time.Second)
 		return nil
 	})
 
@@ -294,6 +339,9 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 	}
 
 	data, err := d.tableScanManager.Output()
+	if d.stopSpinner != nil {
+		d.stopSpinner()
+	}
 	if err != nil {
 		return nil, err
 	}

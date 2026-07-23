@@ -1209,7 +1209,7 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_UPIID: {
 			{
-                                Regexp: regexp.MustCompile(`(?i)\b[\w.\-]{2,}@(ybl|ibl|axl|okaxis|okhdfcbank|okicici|oksbi|paytm|ptsbi|pthdfc|ptaxis|ptyes|apl|rapl|yapl|waaxis|waicici|wahdfcbank|wasbi|yesg|yescred|yespop|superyes|ikwik|mvhdfc|fkaxis|indie|federal|fifederal|icici|axisb|hsbc|idbi|indianbank|allbank|kotak|kotak811|barodampay|pnb|unionbank|canara|bob|sbi|hdfcbank|icicibank|axisbank|idfcfirst|idfc|rbl|bandhan|yesbank|indus|indusind|au|aubank|equitas|ujjivan|airtel|freecharge|famapp|slice|cred|groww|jupiter|mobikwik|amazonpay|flipkart|phonepe|gpay|bhim|upi)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b[\w.\-]{2,}@(ybl|ibl|axl|okaxis|okhdfcbank|okicici|oksbi|paytm|ptsbi|pthdfc|ptaxis|ptyes|apl|rapl|yapl|waaxis|waicici|wahdfcbank|wasbi|yesg|yescred|yespop|superyes|ikwik|mvhdfc|fkaxis|indie|federal|fifederal|icici|axisb|hsbc|idbi|indianbank|allbank|kotak|kotak811|barodampay|pnb|unionbank|canara|bob|sbi|hdfcbank|icicibank|axisbank|idfcfirst|idfc|rbl|bandhan|yesbank|indus|indusind|au|aubank|equitas|ujjivan|airtel|freecharge|famapp|slice|cred|groww|jupiter|mobikwik|amazonpay|flipkart|phonepe|gpay|bhim|upi)\b`),
 				Weight: 1.2,
 				Region: RegionIndia,
 			},
@@ -1486,7 +1486,7 @@ func (r *regexValueDetector) Init() error {
 			{
 				// Common date formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, DD.MM.YYYY
 				Regexp:                regexp.MustCompile(`\b(0[1-9]|[12]\d|3[01])[\/\-\.](0[1-9]|1[0-2])[\/\-\.](19|20)\d{2}\b|\b(19|20)\d{2}[\/\-\.](0[1-9]|1[0-2])[\/\-\.](0[1-9]|[12]\d|3[01])\b`),
-				Weight:                0.7,
+				Weight:                1.0,
 				RequiresColumnContext: true,
 			},
 		},

@@ -2,6 +2,7 @@ package piiscanner
 
 import (
 	"regexp"
+        "time"
 	"unicode/utf8"
 
 	"github.com/klouddb/DPA_private/pkg/utils"
@@ -154,17 +155,19 @@ func IgnoreColumn(column string) bool {
 }
 
 func GetValuesString(i interface{}) string {
-	switch i := i.(type) {
-	case []byte:
-		if !utf8.Valid(i) {
-			return ""
-		}
-		return string(i)
-	case string:
-		return i
-	default:
-		return ""
-	}
+    switch i := i.(type) {
+    case []byte:
+        if !utf8.Valid(i) {
+            return ""
+        }
+        return string(i)
+    case string:
+        return i
+    case time.Time:
+        return i.Format("2006-01-02")
+    default:
+        return ""
+    }
 }
 
 func IsDateString(s string) bool {

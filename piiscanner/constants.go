@@ -159,17 +159,12 @@ func GetValuesString(i interface{}) string {
 		if !utf8.Valid(i) {
 			return ""
 		}
-		if !IsDateString(string(i)) {
-			return string(i)
-		}
+		return string(i)
 	case string:
-		if !IsDateString(i) {
-			return i
-		}
+		return i
 	default:
 		return ""
 	}
-	return ""
 }
 
 func IsDateString(s string) bool {

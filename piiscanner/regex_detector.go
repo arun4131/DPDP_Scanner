@@ -317,7 +317,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_Username: {
 			{
 				// High confidence - exact username/login column names
-				Regexp: regexp.MustCompile(`(?i)^(username|user[\s_-]?name|user|login|login[\s_-]?name|login[\s_-]?user|user[\s_-]?login|user[\s_-]?id|userid|loginid|user[\s_-]?(no|num|number)|user[\s_-]?code|user[\s_-]?identifier|signin|sign[\s_-]?in|account[\s_-]?user|app[\s_-]?user|web[\s_-]?user|system[\s_-]?user|network[\s_-]?user|portal[\s_-]?user|auth[\s_-]?user|principal[\s_-]?name|user[\s_-]?principal[\s_-]?name|upn)$`),
+				Regexp: regexp.MustCompile(`(?i)^(username|user[\s_-]?name|user|login|login[\s_-]?name|login[\s_-]?user|user[\s_-]?login|loginid|user[\s_-]?code|user[\s_-]?identifier|signin|sign[\s_-]?in|account[\s_-]?user|app[\s_-]?user|web[\s_-]?user|system[\s_-]?user|network[\s_-]?user|portal[\s_-]?user|auth[\s_-]?user|principal[\s_-]?name|user[\s_-]?principal[\s_-]?name|upn)$`),
 				Weight: 1.0,
 			},
 			{
@@ -446,7 +446,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_DrivingLicenceNumber: {
 			{
 				// High confidence - exact Driving Licence column names
-				Regexp: regexp.MustCompile(`(?i)^(dl|dls|dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|dlno|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card)$`),
+				Regexp: regexp.MustCompile(`(?i)^(dl|dls|dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|dlno|licence[\s_-]?number|licence[\s_-]?no|license[\s_-]?number|license[\s_-]?no|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card)$`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1241,6 +1241,12 @@ func (r *regexValueDetector) Init() error {
 				// Indian driving license — all state/UT codes including TG (new Telangana 2024), LD (Lakshadweep), TS (old Telangana still valid)
 				Regexp: regexp.MustCompile(`(?i)^((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?(?:19[89][0-9]|20[012][0-9])[\s_-]?[0-9]{7})$`),
 				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// New Sarathi format: state(2) + district(2) + serial(11) = 15 chars
+				Regexp: regexp.MustCompile(`(?i)\b((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?[0-9]{11})\b`),
+				Weight: 0.9,
 				Region: RegionIndia,
 			},
 		},

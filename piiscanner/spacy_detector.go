@@ -261,13 +261,17 @@ func (u *spacyDetector) detectWorkingDir() (string, error) {
 // This will pass the input word to python script and get the
 // PII labels related to the input.
 func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext ColumnContext) ([]PiiLabelWithWeight, error) {
-	// Process the input word and get the PII labels related to the input.
-	// This will pass the input word to python script and get the PII labels
-	// related to the input.
-	out, err := u.cmdProcessor.Process(word)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process input: %v", err)
+	// Only run spacy for Name or Address columns — skip all others
+	if columnContext != nil {
+		if !columnContext[PIILabel_Name] && !columnContext[PIILabel_Address] {
+			return nil, nil
+		}
 	}
+	// Process the input word and get the PII labels
+        out, err := u.cmdProcessor.Process(word)
+        if err != nil {
+                return nil, fmt.Errorf("failed to process input: %v", err)
+        }
 
 	// here response string is expected in pythonResponse format
 	// so we will unmarshal the response string to pythonResponse

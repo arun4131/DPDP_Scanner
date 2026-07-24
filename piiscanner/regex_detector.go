@@ -1183,7 +1183,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_LoanAccountNumber: {
 			{
 				// Indian loan account numbers (bank specific)
-				Regexp:                regexp.MustCompile(`^[A-Za-z0-9]{10,20}$`),
+                                Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_/]{8,25}[A-Za-z0-9]\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1192,7 +1192,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_InsurancePolicyNumber: {
 			{
 				// Indian insurance policy numbers (insurer specific)
-				Regexp:                regexp.MustCompile(`^[A-Za-z0-9]{8,20}$`),
+                                Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_]{6,25}[A-Za-z0-9]\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,

@@ -582,7 +582,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_BankAccountNumber: {
 			{
 				// High confidence - exact bank account related column names
-				Regexp: regexp.MustCompile(`(?i)^(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|bank[\s_-]?account[\s_-]?num|bank[\s_-]?account[\s_-]?no|bank[\s_-]?account[\s_-]?id|bank[\s_-]?account[\s_-]?identifier|account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|checking[\s_-]?account[\s_-]?num|checking[\s_-]?account[\s_-]?no|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|savings[\s_-]?account[\s_-]?num|savings[\s_-]?account[\s_-]?no|current[\s_-]?account|current[\s_-]?account[\s_-]?number|current[\s_-]?account[\s_-]?num|current[\s_-]?account[\s_-]?no|deposit[\s_-]?account|deposit[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number|beneficiary[\s_-]?account|beneficiary[\s_-]?account[\s_-]?number|payee[\s_-]?account|payee[\s_-]?account[\s_-]?number)$`),
+				Regexp: regexp.MustCompile(`(?i)^(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|bank[\s_-]?account[\s_-]?num|bank[\s_-]?account[\s_-]?no|bank[\s_-]?account[\s_-]?id|bank[\s_-]?account[\s_-]?identifier|account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|checking[\s_-]?account[\s_-]?num|checking[\s_-]?account[\s_-]?no|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|savings[\s_-]?account[\s_-]?num|savings[\s_-]?account[\s_-]?no|current[\s_-]?account|current[\s_-]?account[\s_-]?number|current[\s_-]?account[\s_-]?num|current[\s_-]?account[\s_-]?no|deposit[\s_-]?account|deposit[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number|beneficiary[\s_-]?account|beneficiary[\s_-]?account[\s_-]?number|payee[\s_-]?account|payee[\s_-]?account[\s_-]?number|sender[\s_-]?account|sender[\s_-]?account[\s_-]?number|receiver[\s_-]?account|receiver[\s_-]?account[\s_-]?number|source[\s_-]?account|source[\s_-]?account[\s_-]?number|destination[\s_-]?account|destination[\s_-]?account[\s_-]?number|from[\s_-]?account|to[\s_-]?account)$`),
 				Weight: 1.0,
 			},
 			{
@@ -1183,7 +1183,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_LoanAccountNumber: {
 			{
 				// Indian loan account numbers (bank specific)
-                                Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_/]{8,25}[A-Za-z0-9]\b`),
+				Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_/]{8,25}[A-Za-z0-9]\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1192,7 +1192,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_InsurancePolicyNumber: {
 			{
 				// Indian insurance policy numbers (insurer specific)
-                                Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_]{6,25}[A-Za-z0-9]\b`),
+				Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_]{6,25}[A-Za-z0-9]\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1200,8 +1200,8 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_FASTagID: {
 			{
-				// FASTag identifiers are issuer specific.
-				Regexp:                regexp.MustCompile(`^[A-Za-z0-9]{10,24}$`),
+				// FASTag identifiers are issuer-specific.
+				Regexp:                regexp.MustCompile(`(?i)\b[A-Z0-9]{10,24}\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1382,14 +1382,21 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_EPFMemberID: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}[0-9]{7}[0-9]{5,10}\b`),
+				// Official EPF format
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}/[A-Z]{3}/\d{5}/\d{3}/\d{7}\b`),
 				Weight: 0.95,
 				Region: RegionIndia,
 			},
 			{
-				// EPF prefix format: EPF + 15-18 digits
-				Regexp: regexp.MustCompile(`(?i)\bEPF[0-9]{15,18}\b`),
-				Weight: 0.9,
+				// Compact format (legacy)
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}\d{5}\d{3}\d{7}\b`),
+				Weight: 0.95,
+				Region: RegionIndia,
+			},
+			{
+				// EPF-prefixed format
+				Regexp: regexp.MustCompile(`(?i)\bEPF\d{15,18}\b`),
+				Weight: 0.90,
 				Region: RegionIndia,
 			},
 		},
@@ -1456,7 +1463,7 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_OAuthToken: {
 			{
 				Regexp: regexp.MustCompile(`ya29\..{60,200}`), // google oauth token
-				Weight: 0.3,
+				Weight: 0.8,
 			},
 		},
 

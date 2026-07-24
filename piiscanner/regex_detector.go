@@ -1339,7 +1339,14 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_PassportNumber: {
 			{
-				Regexp: regexp.MustCompile(`(?i)^[A-Z][0-9]{7}$`),
+				// 1 letter + 7 digits
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z][0-9]{7}\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// 2 letters + 6 digits
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[0-9]{6}\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1377,6 +1384,12 @@ func (r *regexValueDetector) Init() error {
 			{
 				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}[0-9]{7}[0-9]{5,10}\b`),
 				Weight: 0.95,
+				Region: RegionIndia,
+			},
+			{
+				// EPF prefix format: EPF + 15-18 digits
+				Regexp: regexp.MustCompile(`(?i)\bEPF[0-9]{15,18}\b`),
+				Weight: 0.9,
 				Region: RegionIndia,
 			},
 		},
@@ -1463,6 +1476,13 @@ func (r *regexValueDetector) Init() error {
 				Regexp: regexp.MustCompile(`\b\d{2}[-\s]\d{2}[-\s]\d{6}[-\s]\d{3}[-\s]\d{4}\b`),
 				Weight: 0.9,
 				Region: RegionIndia,
+			},
+			{
+				// ESIC plain 17-digit format (no separators)
+				Regexp:                regexp.MustCompile(`\b\d{17}\b`),
+				Weight:                0.6,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_RationCard: {

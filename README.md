@@ -4,19 +4,25 @@
 
 A command-line PII (Personally Identifiable Information) scanner for PostgreSQL databases, built for compliance with India's **Digital Personal Data Protection (DPDP) Act 2023**.
 
-Scan one or more PostgreSQL servers and databases for sensitive data — Aadhaar, PAN, GSTIN, bank accounts, credit cards, passports, UPI IDs, driving licences, and **40+ more entity types** — with results in the terminal, log files, and a self-contained HTML report.
+Point it at one or more PostgreSQL servers and it will scan every table for sensitive data — Aadhaar, PAN, GSTIN, bank accounts, credit cards, passports, UPI IDs, driving licences, and **40+ more entity types** — and give you the results in your terminal, in log files, and in a self-contained HTML report you can open in a browser.
+
+You don't need to know Go or SQL to use this tool. Just follow the steps below in order.
 
 ---
 
 ## What You Get
 
-- **Terminal output** — clean table showing only High confidence findings per database
-- **HTML report** — `kshield_pii_report.html` — visual report with tabs for High and Low/Medium confidence findings, pagination, and color-coded labels
-- **Log files** — `kshield_pii_highconfidence.log` and `kshield_pii_lowconfidence.log` — full detail for every confidence level
-- **Data Scan** — finds PII in actual column values using random sampling (~10% of rows)
-- **Meta Scan** — finds PII from column names alone, without reading any data
-- **Deep Scan** — like Data Scan but reads all rows, no sampling limit
-- **Multi-instance support** — scan multiple PostgreSQL servers and databases in one run
+After every scan you get:
+
+- **Terminal output** — a clean summary showing High-confidence findings for the database you just scanned
+- **HTML report** — `kshield_pii_report.html` — a visual report with tabs for High and Low/Medium confidence findings, pagination, and colour-coded labels. Open it by double-clicking the file.
+- **Log files** — `kshield_pii_highconfidence.log` and `kshield_pii_lowconfidence.log` — the full, unabridged results for every confidence level
+- **Multi-instance support** — scan multiple PostgreSQL servers and multiple databases per server in a single run
+
+The scanner works two ways at once on every table:
+
+- **Meta Scan** — looks at column names only (e.g. a column called `aadhaar_number`), no data is read
+- **Data Scan** — reads the actual values stored in each column and checks them against 40+ pattern-matching rules
 
 ---
 
@@ -24,10 +30,12 @@ Scan one or more PostgreSQL servers and databases for sensitive data — Aadhaar
 
 | Tool | Why | Version |
 |------|-----|---------|
-| Go | To build and run the scanner | 1.18 or newer |
-| PostgreSQL | The database being scanned | Any modern version |
-| Git | To clone this repo | Any |
-| Python 3 *(optional)* | Only needed to seed test data | 3.8 or newer |
+| Go | To build the scanner | 1.18 or newer |
+| PostgreSQL | The database you want to scan | Any modern version |
+| Git | To download this repo | Any |
+| Python 3 *(optional)* | Only needed if you want to seed a test database with fake data | 3.8 or newer |
+
+You do **not** need Python to run the scanner itself — it's only used for the optional test-data script.
 
 ---
 
@@ -42,7 +50,7 @@ cd DPA_private
 
 ## Step 2 — Create the Config File
 
-Create a file named `config.toml` in the project root. This is where you tell the scanner which PostgreSQL servers and databases to scan.
+Create a file named `config.toml` in the project root (the same folder as this README). This tells the scanner which PostgreSQL servers and databases to look at, and what credentials to use.
 
 **Basic example — one server, one database:**
 ```toml
@@ -71,7 +79,7 @@ password  = "password2"
 databases = ["production_db"]
 ```
 
-> `config.toml` is listed in `.gitignore` and will **not** be accidentally committed to Git.
+> `config.toml` is listed in `.gitignore`, so it will **not** be accidentally committed or pushed to GitHub. Your passwords stay local.
 
 ---
 
@@ -85,13 +93,13 @@ go build -o dpdpascanner ./cmd/
 go build -o dpdpascanner.exe ./cmd/
 ```
 
-This creates the `dpdpascanner` (or `dpdpascanner.exe`) binary in the project root.
+This creates a single `dpdpascanner` (or `dpdpascanner.exe` on Windows) file in the project folder. This is the program you'll actually run — you only need to build it once (rebuild only if the code changes).
 
 ---
 
 ## Step 4 — Run a Scan
 
-**Scan everything in config.toml (simplest):**
+**Scan everything in config.toml (simplest — just do this first):**
 ```bash
 # Linux / Mac
 ./dpdpascanner
@@ -100,14 +108,14 @@ This creates the `dpdpascanner` (or `dpdpascanner.exe`) binary in the project ro
 .\dpdpascanner.exe
 ```
 
-NOTE: Dont forget to attach .exe after "dpdpascanner" in the commands if you are using Windows
+> **Windows users:** always type the full `.exe` name, e.g. `.\dpdpascanner.exe`, not just `dpdpascanner`.
 
 **Scan a specific database:**
 ```bash
 ./dpdpascanner --database sales_db
 ```
 
-**Scan a specific server:**
+**Scan a specific server (all its databases):**
 ```bash
 ./dpdpascanner --target-host prod-server.example.com
 ```
@@ -117,46 +125,65 @@ NOTE: Dont forget to attach .exe after "dpdpascanner" in the commands if you are
 ./dpdpascanner --target-host localhost --database hr_db
 ```
 
+The first time you run a scan, just use the plain `./dpdpascanner` command with no flags — leaving out `--piiscanner` entirely gives you the best default behavior (see "Default Behavior" below). Add `--piiscanner` later only if you specifically want to force one scan type everywhere.
+
 ---
 
 ## All Available Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config` | `.` (current folder) | Folder containing `config.toml`. Use this if your config file is in a different location. |
-| `--piiscanner` | `datascan` | Scan type. Options: `datascan`, `metascan`, `deepscan`. See scan types below. |
-| `--database` | *(all databases)* | Scan only this one database. Leave empty to scan all databases in the config. |
-| `--schema` | `public` | PostgreSQL schema to scan. Most databases use `public`. |
-| `--target-host` | *(all hosts)* | Scan only this one server. Leave empty to scan all servers in the config. |
-| `--target-port` | *(all ports)* | Scan only instances on this port. Useful if you have multiple instances on different ports. |
+| `--config` | current folder | Folder containing `config.toml`. Use this if your config file lives somewhere else, e.g. `--config C:\configs\prod`. |
+| `--piiscanner` | *(not set — see below)* | Force one scan type for every table. Options: `datascan`, `metascan`, `deepscan`. Leave this flag out entirely to get the recommended automatic behavior — see "Default Behavior (no `--piiscanner` flag)" below. |
+| `--database` | *(all databases)* | Scan only this one database. Leave empty to scan every database listed in the config. |
+| `--schema` | `public` | PostgreSQL schema to scan. Most databases only use `public`. |
+| `--target-host` | *(all hosts)* | Scan only the server with this hostname. Leave empty to scan every server in the config. |
 | `--exclude-table` | *(none)* | Comma-separated list of tables to skip. Example: `--exclude-table audit_logs,temp_data` |
-| `--include-table` | *(all tables)* | Comma-separated list of tables to scan. All others will be skipped. |
-| `--print-all` | `false` | By default, terminal only shows High confidence. Add this flag to also show Medium and Low in the terminal. |
-| `--print-summary` | `false` | Print a short summary only, without the full table breakdown. |
+| `--include-table` | *(all tables)* | Comma-separated list of tables to scan. Every other table is skipped. |
+| `--print-all` | `false` | By default the terminal only shows High-confidence findings. Add this flag to also print Medium and Low confidence findings. |
+| `--print-summary` | `false` | Print a short, condensed summary instead of the full results table. |
+
+---
+
+## Default Behavior (no `--piiscanner` flag)
+
+This is **not** a scan type you can select — it's simply what happens automatically when you run `./dpdpascanner` without the `--piiscanner` flag, which is the recommended way to run it.
+
+For each table, the scanner checks how many rows it has and picks the best approach on its own:
+- **Small tables** (fewer than 10,000 rows) → scanned fully, row by row, so nothing is missed
+- **Large tables** (10,000 rows or more) → scanned using the same 10% random sample described under `datascan` below, to keep things fast
+
+You'll see a message like `users has 250 rows - below threshold of 10000 rows, running deep scan` in the terminal while this happens — that's expected, not an error.
+
+- **Best for:** everyday use — you get full accuracy on small tables and speed on big ones without having to decide yourself
+- **Output:** Data Scan Report + Meta Scan Report
 
 ---
 
 ## Scan Types Explained
 
-### `datascan` *(default)*
-Reads actual data from your database columns using random sampling — approximately 10% of rows, up to 10,000 rows per table.
+These are the values you can pass to `--piiscanner` when you want to force the same scan type on every table, instead of the automatic per-table behavior described above.
 
-- **Best for:** Detecting PII hidden in columns with generic names (e.g. `field_01`, `ref_b`)
-- **How it works:** Scans values and matches against 40+ regex patterns
+### `datascan`
+Always reads actual data from your database columns, using a random sample — approximately 10% of rows, up to 10,000 rows per table — regardless of table size.
+
+- **Best for:** consistently fast scans across every table, when you're fine with sampling even on small tables
+- **How it works:** scans sampled values and matches them against 40+ regex patterns
+- **Note:** on small tables (under 10,000 rows) the scanner will print a warning that sampling may miss results, and suggests you omit `--piiscanner` (to get the automatic behavior above) or use `--piiscanner deepscan` instead
 - **Output:** Data Scan Report + Meta Scan Report
 
 ### `metascan`
 Only looks at column names — does **not** read any actual data from the database.
 
-- **Best for:** Quick scan, or environments where reading data is restricted
-- **How it works:** Matches column names against known PII naming patterns
+- **Best for:** the fastest possible scan, or environments where you're not allowed to read row data at all
+- **How it works:** matches column names against known PII naming patterns
 - **Output:** Meta Scan Report only
 
 ### `deepscan`
-Same as `datascan` but reads **all rows** with no sampling limit.
+Reads **every row** of every table, no sampling, no limit.
 
-- **Best for:** Thorough scan on smaller databases where you want complete coverage
-- **Note:** Can be slow on large tables
+- **Best for:** a thorough, complete scan when you have the time to wait, especially on smaller databases
+- **Note:** can be slow on large tables. If a table has more than 100,000 rows, the scanner will pause and ask you to confirm before reading it (`yes` / `no` / `yes to all`), so a huge table can't accidentally lock up your terminal for hours without warning
 - **Output:** Data Scan Report + Meta Scan Report
 
 ---
@@ -164,10 +191,12 @@ Same as `datascan` but reads **all rows** with no sampling limit.
 ## Understanding the Output
 
 ### Terminal
-Shows only **High confidence** findings after each database scan. Each database is shown in its own section:
+While scanning, you'll see progress messages (tables found, scan mode chosen per table, a progress bar for very large tables). Once a database finishes, you get a summary of **High confidence** findings:
 
 ```
 === Scanning localhost:5432 / sales_db ===
+> Found 12 tables
+> Started table scan manager with 8 runners
 
 Data Scan Report
 +----------------+----------+-------+------------+----------+---------+
@@ -184,31 +213,31 @@ Meta Scan Report
 +----------------+----------+----------+------------+
 
 > High confidence log file created at: [ /path/to/kshield_pii_highconfidence.log ]
-> Low confidence log file created at:  [ /path/to/kshield_pii_lowconfidence.log ]
-> HTML report created at:              [ /path/to/kshield_pii_report.html ]
+> Low confidence log file created at: [ /path/to/kshield_pii_lowconfidence.log ]
+> HTML report created at: [ /path/to/kshield_pii_report.html ]
 ```
 
+If nothing was found at all, you'll simply see `> No PII data found in database`.
+
 ### HTML Report (`kshield_pii_report.html`)
-A self-contained HTML file created in the project folder after each scan. Open it in any browser — no internet required.
+A self-contained HTML file created in the project folder after each database scan. Just double-click it to open it in your browser — no internet connection needed, nothing is uploaded anywhere.
 
 It contains:
-- **Summary cards** — Tables scanned, Data Findings, Meta Findings, Low/Med Data count, Low/Med Meta count
-- **High Confidence tab** — Data Scan and Meta Scan tables with pagination
-- **Low / Medium Confidence tab** — All lower-confidence findings in the same table format
-- **Color-coded labels** — Each PII type has a distinct color badge
-- **Matched ratio bar** — Visual bar showing what percentage of rows matched
+- **Summary cards** — Tables scanned, Data Findings, Meta Findings, Low/Medium confidence Data count, Low/Medium confidence Meta count
+- **High Confidence tab** — Data Scan and Meta Scan tables, with pagination for large result sets
+- **Low / Medium Confidence tab** — every lower-confidence finding, same table layout
+- **Colour-coded labels** — each PII type gets a distinct badge colour (email, phone, password, name/username, address, etc.)
+- **Matched ratio bar** — a small visual bar showing what percentage of sampled/scanned values actually matched, for each finding
 
-> **Note:** The HTML report is overwritten each time a scan runs. If you scan multiple databases, the file will contain results from the **last** database scanned. Run with `--database` to target a specific database and keep its report.
+> **Note:** The HTML report (and both log files) are overwritten every time a scan runs. If your config scans multiple databases in one run, the report will only contain the **last** database scanned. Use `--database yourdb` to scan one database at a time and keep a separate report per database.
 
 ### Log Files
-Two files are created (or overwritten) after each database scan:
+Two files are created (or overwritten) after each database scan, in the folder you ran the scanner from:
 
 | File | Contents |
 |------|----------|
-| `kshield_pii_highconfidence.log` | All High confidence findings with full detail |
-| `kshield_pii_lowconfidence.log` | All Medium and Low confidence findings |
-
-> Like the HTML report, log files are overwritten per database scan.
+| `kshield_pii_highconfidence.log` | Every High-confidence finding, full detail |
+| `kshield_pii_lowconfidence.log` | Every Medium and Low-confidence finding, full detail |
 
 ---
 
@@ -233,17 +262,22 @@ Two files are created (or overwritten) after each database scan:
 
 ## Example Usage Scenarios
 
-**Scan everything, all servers and databases:**
+**Scan everything, all servers and databases (recommended first run):**
 ```bash
 ./dpdpascanner
 ```
 
 **Scan only one database on one server:**
 ```bash
-./dpdpascanner --target-host localhost --database hr_db --piiscanner datascan
+./dpdpascanner --target-host localhost --database hr_db
 ```
 
-**Quick scan using column names only (no data read):**
+**Force a full, no-sampling scan of one (smaller) database:**
+```bash
+./dpdpascanner --database hr_db --piiscanner deepscan
+```
+
+**Quick scan using column names only (no data read at all):**
 ```bash
 ./dpdpascanner --piiscanner metascan --database sales_db
 ```
@@ -273,6 +307,11 @@ Two files are created (or overwritten) after each database scan:
 ./dpdpascanner --schema hr --database company_db
 ```
 
+**Just want the short version, no big tables:**
+```bash
+./dpdpascanner --print-summary --database hr_db
+```
+
 ---
 
 ## Project Structure
@@ -284,13 +323,14 @@ DPA_private/
 ├── piiscanner/
 │   ├── detector.go              ← 40 PII label definitions
 │   ├── constants.go             ← Scan type constants, ignore rules
-│   ├── database_scanner.go      ← Core scan engine, NewConfig
+│   ├── database_scanner.go      ← Core scan engine (auto/data/deep/meta scan logic)
+│   ├── regex_detector.go        ← All the pattern-matching rules
 │   ├── output_helper.go         ← Terminal and log file output
 │   ├── html_report.go           ← HTML report generator
 │   └── ...
 ├── benchmark/
-│   └── seed_comprehensive.py    ← Seeds test database with 40 entity types
-├── config.toml                  ← Your credentials (not in git)
+│   └── seed_comprehensive.py    ← Seeds a test database with all 40 entity types
+├── config.toml                  ← Your credentials (not committed to git)
 └── go.mod
 ```
 
@@ -298,12 +338,14 @@ DPA_private/
 
 ## Optional — Seed Test Data
 
-If you want to test the scanner without setting up your own database, run the seed script. It creates a `pii_comprehensive` database with 13 tables, ~10,000 rows each, covering all 40 PII entity types.
+Don't have a database with PII in it yet? Use the seed script to create one full of realistic fake data, so you can try the scanner without touching real data.
 
 ```bash
 pip install psycopg2-binary
 python benchmark/seed_comprehensive.py
 ```
+
+This creates a `pii_comprehensive` database with several tables, about 10,000 rows each, covering all 40 PII entity types. (Edit the `DB` connection details near the top of `benchmark/seed_comprehensive.py` first if your PostgreSQL user/password isn't the default.)
 
 Then add it to your `config.toml`:
 ```toml
@@ -315,16 +357,23 @@ password  = "your_password"
 databases = ["pii_comprehensive"]
 ```
 
+And run:
+```bash
+./dpdpascanner --database pii_comprehensive
+```
+
 ---
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| `Failed to load config.toml` | Make sure `config.toml` exists in the folder you are running from, or use `--config` to point to its location |
-| `Could not connect` | Check that PostgreSQL is running, and that the host, port, user, and password in `config.toml` are correct |
-| `go: command not found` | Go is not installed or not on your system PATH — [install Go](https://go.dev/dl/) |
-| Scan takes a long time | Use `--piiscanner metascan` for a faster scan, or `--include-table` to scan only specific tables |
-| Terminal shows fewer results than log file | This is expected — terminal shows only the first High confidence entry per column. Full results are always in the log files and HTML report |
-| HTML report only has last database | Run with `--database yourdb` to target one database and keep its report |
-| `[SKIP] Could not connect` for one instance | Other instances still scan. Fix the credentials for the skipped instance in `config.toml` |
+| `Failed to load config.toml` | Make sure `config.toml` exists in the folder you're running the scanner from, or use `--config` to point to its location. On Linux, if no local file is found the scanner also checks `/etc/dpdpscanner/config.toml` before giving up. |
+| `Could not connect` | Check that PostgreSQL is running, and that the host, port, user, and password in `config.toml` are correct. |
+| `go: command not found` | Go is not installed or not on your system PATH — [install Go](https://go.dev/dl/). |
+| Scan takes a long time | Use `--piiscanner metascan` for the fastest possible scan, or `--include-table` to scan only specific tables. |
+| Scanner is asking `Do you want to continue? (yes=Y \| no=N \| yes to all=A)` | This only appears during `deepscan` on a table with more than 100,000 rows, so you don't accidentally wait hours without warning. Type `Y` to continue, `N` to skip that table, or `A` to say yes to every large table for the rest of the run. |
+| Terminal shows fewer results than the log file | This is expected — the terminal only shows High-confidence findings by default. Full results (including Medium/Low confidence) are always in the log files and the HTML report, or use `--print-all`. |
+| HTML report only has the last database | Run with `--database yourdb` to target one database at a time and keep a separate report per database. |
+| `[SKIP] Could not connect` for one instance | Other instances in your config still get scanned normally. Fix the credentials for the skipped instance in `config.toml` and re-run. |
+| `database "..." not found in config.toml` | The name you passed to `--database` doesn't match any database listed under `databases = [...]` in your `config.toml`. Check spelling. |

@@ -2,7 +2,7 @@ package piiscanner
 
 import (
 	"regexp"
-        "time"
+	"time"
 	"unicode/utf8"
 
 	"github.com/klouddb/DPA_private/pkg/utils"
@@ -13,7 +13,7 @@ var (
 		regexp.MustCompile(`(?i)^(created|updated|deleted|committed)_(at|by|on)$`),
 		// regexp.MustCompile(`(?i)_id$`), // this is failing. here we need to all _id accept email_id
 		regexp.MustCompile(`(?i)^.*timestamp.*$`),
-		regexp.MustCompile(`(?i)_date$`),
+		regexp.MustCompile(`(?i)^(created|updated|modified|deleted|committed|inserted|last_modified|expiry|expiration|effective|issue|invoice|payment)_date$`),
 		regexp.MustCompile(`(?i)_time$`),
 	}
 	ignoreSet = utils.NewSetFromSlice([]string{
@@ -155,19 +155,19 @@ func IgnoreColumn(column string) bool {
 }
 
 func GetValuesString(i interface{}) string {
-    switch i := i.(type) {
-    case []byte:
-        if !utf8.Valid(i) {
-            return ""
-        }
-        return string(i)
-    case string:
-        return i
-    case time.Time:
-        return i.Format("2006-01-02")
-    default:
-        return ""
-    }
+	switch i := i.(type) {
+	case []byte:
+		if !utf8.Valid(i) {
+			return ""
+		}
+		return string(i)
+	case string:
+		return i
+	case time.Time:
+		return i.Format("2006-01-02")
+	default:
+		return ""
+	}
 }
 
 func IsDateString(s string) bool {

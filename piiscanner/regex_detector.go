@@ -587,7 +587,7 @@ func (r *regexColumnDetector) Init() error {
 			},
 			{
 				// Medium confidence - common bank account aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)(?:^|[\s_-])(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acnt[\s_-]?number|acc[\s_-]?number|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|current[\s_-]?account|current[\s_-]?account[\s_-]?number|deposit[\s_-]?account|customer[\s_-]?account|beneficiary[\s_-]?account|payee[\s_-]?account|refund[\s_-]?bank[\s_-]?account|refund[\s_-]?account)(?:[\s_-]|$)`),
+				Regexp: regexp.MustCompile(`(?i)(?:^|[\s_-])(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|current[\s_-]?account|current[\s_-]?account[\s_-]?number|deposit[\s_-]?account|customer[\s_-]?account|beneficiary[\s_-]?account|payee[\s_-]?account|refund[\s_-]?bank[\s_-]?account|refund[\s_-]?account)(?:[\s_-]|$)`),
 				Weight: 0.5,
 			},
 			{
@@ -1156,8 +1156,8 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// CDSL BO ID
-				Regexp: regexp.MustCompile(`\b\d{16}\b`),
-				Weight: 0.3,
+				Regexp: regexp.MustCompile(`\b(12|13|16|11|10)\d{14}\b`),
+				Weight: 0.95,
 				Region: RegionIndia,
 			},
 		},

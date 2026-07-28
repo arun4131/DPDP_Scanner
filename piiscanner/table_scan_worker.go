@@ -27,7 +27,7 @@ type TableScanWorker struct {
 	columnDetector Detector
 
 	// cache column context results — same column name always gives same result
-	columnContextCache   map[string]bool
+	columnContextCache   map[string]ColumnContext
 	columnContextCacheMu sync.RWMutex
 }
 
@@ -36,7 +36,7 @@ func NewTableScanWorker(inputChan chan ScanInput, outputChan chan ScanOutput, de
 		inputChan:          inputChan,
 		outputChan:         outputChan,
 		detectors:          detectors,
-		columnContextCache: make(map[string]bool),
+		columnContextCache: make(map[string]ColumnContext),
 	}
 }
 
@@ -47,10 +47,21 @@ func (t *TableScanWorker) WithColumnDetector(d Detector) *TableScanWorker {
 	return t
 }
 
-// hasColumnContext checks if the column name matches any column detector pattern.
+// getColumnContext checks if the column name matches any column detector pattern.
 // Results are cached so the regex only runs once per unique column name.
 func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) ColumnContext {
 	columnContext := make(ColumnContext)
+
+	if t.columnDetector == nil {
+		return columnContext
+	}
+
+	t.columnContextCacheMu.RLock()
+	if cached, ok := t.columnContextCache[column]; ok {
+		t.columnContextCacheMu.RUnlock()
+		return cached
+	}
+	t.columnContextCacheMu.RUnlock()
 
 	labels, err := t.columnDetector.Detect(ctx, column, nil)
 	if err != nil {
@@ -60,6 +71,10 @@ func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) C
 	for _, label := range labels {
 		columnContext[label.PIILabel] = true
 	}
+
+	t.columnContextCacheMu.Lock()
+	t.columnContextCache[column] = columnContext
+	t.columnContextCacheMu.Unlock()
 
 	return columnContext
 }

@@ -447,6 +447,65 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 					output.Data[table.TableName][columnName][i].Weight > output.Data[table.TableName][columnName][j].Weight
 			})
 
+			// Phase 2 Fallback Scan for Unrecognized Columns
+			// If column had no column match AND no high/medium value match, test buffered values against RequiresColumnContext entities
+			hasValidMatch := false
+			for _, item := range output.Data[table.TableName][columnName] {
+				if item.Confidence == "High" || item.Confidence == "Medium" {
+					hasValidMatch = true
+					break
+				}
+			}
+
+			if !hasValidMatch {
+				sampleVals := d.tableScanManager.UnrecognizedValues[table.TableName][columnName]
+				if len(sampleVals) > 0 {
+					fallbackDetector := NewRegexValueDetector()
+					if err := fallbackDetector.Init(); err == nil {
+						fallbackContext := ColumnContext{
+							PIILabel_BankAccountNumber:      true,
+							PIILabel_ChequeNumber:         true,
+							PIILabel_CIFNumber:            true,
+							PIILabel_LoanAccountNumber:    true,
+							PIILabel_InsurancePolicyNumber: true,
+							PIILabel_FASTagID:             true,
+							PIILabel_CVV:                  true,
+							PIILabel_Phone:                true,
+							PIILabel_MICRCode:             true,
+							PIILabel_UAN:                  true,
+							PIILabel_BirthDate:            true,
+						}
+
+						labelHits := make(map[PIILabel]int)
+						labelWeights := make(map[PIILabel]float64)
+
+						for _, val := range sampleVals {
+							labels, _ := fallbackDetector.Detect(context.TODO(), val, fallbackContext)
+							for _, lbl := range labels {
+								labelHits[lbl.PIILabel]++
+								labelWeights[lbl.PIILabel] += lbl.Weight
+							}
+						}
+
+						totalSamples := len(sampleVals)
+						for lbl, hits := range labelHits {
+							if hits > 0 {
+								// Average weight over sampled values
+								avgWeight := labelWeights[lbl] / float64(totalSamples)
+								piiDataWithWeight := NewPIIDataWithWeightString(lbl, avgWeight, DetectorType_ValueDetector, "regex")
+								piiDataWithWeight.SetScanedValueAndMatchCount(hits, totalSamples)
+								output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)
+							}
+						}
+
+						// Re-sort column findings so top confidence result is first
+						sort.Slice(output.Data[table.TableName][columnName], func(i, j int) bool {
+							return output.Data[table.TableName][columnName][i].Weight > output.Data[table.TableName][columnName][j].Weight
+						})
+					}
+				}
+			}
+
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/klouddb/DPA_private/pkg/utils"
@@ -94,11 +95,15 @@ type TableScanManager struct {
 	workerGroup errgroup.Group
 
 	valueCount map[string]map[string]int
+
+	UnrecognizedValues map[string]map[string][]string
+	unrecognizedMu     sync.Mutex
 }
 
 func NewTableScanManager() *TableScanManager {
 	return &TableScanManager{
-		valueCount: make(map[string]map[string]int),
+		valueCount:         make(map[string]map[string]int),
+		UnrecognizedValues: make(map[string]map[string][]string),
 	}
 }
 
@@ -216,6 +221,16 @@ func (t *TableScanManager) PushValue(input ScanInput) (err error) {
 	}
 
 	tableMap[input.ColumnName]++
+
+	// Buffer sample values for unrecognized column fallback scan (max 100 values per column)
+	t.unrecognizedMu.Lock()
+	if t.UnrecognizedValues[input.Tablename] == nil {
+		t.UnrecognizedValues[input.Tablename] = make(map[string][]string)
+	}
+	if len(t.UnrecognizedValues[input.Tablename][input.ColumnName]) < 100 {
+		t.UnrecognizedValues[input.Tablename][input.ColumnName] = append(t.UnrecognizedValues[input.Tablename][input.ColumnName], v)
+	}
+	t.unrecognizedMu.Unlock()
 
 	newInput := func(s string) ScanInput {
 		i := input

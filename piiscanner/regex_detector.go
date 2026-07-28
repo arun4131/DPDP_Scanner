@@ -1156,10 +1156,9 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// CDSL BO ID
-				Regexp:                regexp.MustCompile(`\b\d{16}\b`),
-				Weight:                0.3,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`\b\d{16}\b`),
+				Weight: 0.3,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_ChequeNumber: {
@@ -1174,7 +1173,12 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_CIFNumber: {
 			{
-				Regexp:                regexp.MustCompile(`(?i)\b(CIF\d{6,12}|\d{8,11})\b`),
+				Regexp: regexp.MustCompile(`(?i)\bCIF\d{6,12}\b`),
+				Weight: 0.9,
+				Region: RegionIndia,
+			},
+			{
+				Regexp:                regexp.MustCompile(`(?i)\b\d{8,11}\b`),
 				Weight:                0.3,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
@@ -1365,11 +1369,10 @@ func (r *regexValueDetector) Init() error {
 				Region: RegionIndia,
 			},
 			{
-				// ABHA plain 14 digits — requires column context to avoid FP
-				Regexp:                regexp.MustCompile(`\b\d{14}\b`),
-				Weight:                0.6,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				// ABHA plain 14 digits
+				Regexp: regexp.MustCompile(`\b\d{14}\b`),
+				Weight: 0.6,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_UAN: {
@@ -1486,19 +1489,17 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// ESIC plain 17-digit format (no separators)
-				Regexp:                regexp.MustCompile(`\b\d{17}\b`),
-				Weight:                0.6,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`\b\d{17}\b`),
+				Weight: 0.6,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_RationCard: {
 			{
 				// Ration card: state code + alphanumeric
-				Regexp:                regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
-				Weight:                0.7,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
+				Weight: 0.7,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_SEBIRegistration: {
@@ -1520,9 +1521,8 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_Location: {
 			{
 				// Latitude/Longitude coordinate pair: 18.9220, 72.8347
-				Regexp:                regexp.MustCompile(`^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$`),
-				Weight:                0.9,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$`),
+				Weight: 0.9,
 			},
 		},
 	}

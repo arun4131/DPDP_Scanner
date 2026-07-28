@@ -39,16 +39,16 @@ type htmlReportData struct {
 }
 
 func CreateHTMLReport(i *DatabasePIIScanOutput, cnf Config, host string) {
+	if !i.HasFindings() {
+		return
+	}
+
 	f, err := os.Create("kshield_pii_report.html")
 	if err != nil {
 		fmt.Println("Error creating HTML report:", err)
 		return
 	}
 	defer f.Close()
-
-	if !i.HasFindings() {
-		return
-	}
 
 	data := buildHTMLData(i, cnf, host)
 
@@ -68,10 +68,18 @@ func CreateHTMLReport(i *DatabasePIIScanOutput, cnf Config, host string) {
 }
 
 func buildHTMLData(i *DatabasePIIScanOutput, cnf Config, host string) htmlReportData {
+	scanType := RunOptionTitleMap[cnf.runOption]
+	if cnf.AutoDetect {
+		scanType = AutoScanTitle
+	}
+	if cnf.useSpacy {
+		scanType = RunOption_SpacyScan_Title
+	}
+
 	data := htmlReportData{
 		Host:     host,
 		Database: cnf.Database,
-		ScanType: cnf.runOption.String(),
+		ScanType: scanType,
 	}
 
 	tableSet := make(map[string]bool)

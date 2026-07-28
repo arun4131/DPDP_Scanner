@@ -40,23 +40,30 @@ func (r RunOption) String() string {
 type DetectorType string
 
 const (
-	RunOption_MetaScan RunOption = iota
+	// RunOption_Unset is the zero value of RunOption. It is never a valid,
+	// user-selectable scan mode — it only means "no fixed mode was set on
+	// this value yet". Config.AutoDetect is what actually signals automatic
+	// per-table behavior; never add a `== RunOption_Unset` check to decide
+	// scan logic — check AutoDetect instead.
+	RunOption_Unset RunOption = iota
+	RunOption_MetaScan
 	RunOption_DataScan
 	RunOption_DeepScan
 	RunOption_SpacyScan
-	RunOption_Auto
 
 	RunOption_MetaScan_String  = "metascan"
 	RunOption_DataScan_String  = "datascan"
 	RunOption_DeepScan_String  = "deepscan"
 	RunOption_SpacyScan_String = "spacyscan"
-	RunOption_Auto_String      = "auto"
 
 	RunOption_MetaScan_Title  = "Meta Scan"
 	RunOption_DataScan_Title  = "Data Scan"
 	RunOption_DeepScan_Title  = "Deep Scan"
 	RunOption_SpacyScan_Title = "Spacy Scan"
-	RunOption_Auto_Title      = "Auto Scan"
+
+	// AutoScanTitle is the display label used when Config.AutoDetect is true —
+	// there's no single fixed RunOption to describe in that case.
+	AutoScanTitle = "Auto Scan"
 
 	DEEPSCAN_WARNINING_LIMIT     = 100000
 	DEEPSCAN_SPACY_WARNING_LIMIT = 10000
@@ -81,7 +88,6 @@ var RunOptionTitleMap = map[RunOption]string{
 	RunOption_DataScan:  RunOption_DataScan_Title,
 	RunOption_DeepScan:  RunOption_DeepScan_Title,
 	RunOption_SpacyScan: RunOption_SpacyScan_Title,
-	RunOption_Auto:      RunOption_Auto_Title,
 }
 
 var PiiEntitiesForWeightMergeLogic = utils.NewSetFromSlice([]PIILabel{
@@ -120,7 +126,15 @@ var RunOptionMap = map[string]RunOption{
 	RunOption_DataScan_String:  RunOption_DataScan,
 	RunOption_DeepScan_String:  RunOption_DeepScan,
 	RunOption_SpacyScan_String: RunOption_SpacyScan,
-	RunOption_Auto_String:      RunOption_Auto,
+}
+
+// IsValidRunOption reports whether s is one of the CLI-selectable scan modes
+// (datascan, metascan, deepscan, spacyscan). An empty string deliberately
+// returns false here — that case is handled by NewConfig as "no fixed mode
+// requested" (auto-detect), not as a run option value.
+func IsValidRunOption(s string) bool {
+	_, ok := RunOptionMap[s]
+	return ok
 }
 
 func RunOptionSlice() []string {

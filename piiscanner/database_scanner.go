@@ -20,7 +20,13 @@ import (
 var yesToAll bool
 
 type Config struct {
-	runOption    RunOption
+	runOption RunOption
+	// AutoDetect is true when the caller didn't request a fixed scan mode
+	// (--piiscanner was left empty). When true, runOption is RunOption_Unset
+	// and the real per-table mode (DataScan vs DeepScan) is picked later, in
+	// piiTableScanner.processTable, based on that table's row count.
+	AutoDetect bool
+
 	useSpacy     bool
 	excludeTable utils.Set[string]
 	includeTable []string
@@ -68,9 +74,15 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 		printAllResults = true
 	}
 
-	r, ok := RunOptionMap[runOption]
-	if !ok {
-		return nil, fmt.Errorf("invalid run option %s, valid options are %s", runOption, strings.Join(RunOptionSlice(), ", "))
+	autoDetect := runOption == ""
+
+	r := RunOption_Unset
+	if !autoDetect {
+		var ok bool
+		r, ok = RunOptionMap[runOption]
+		if !ok {
+			return nil, fmt.Errorf("invalid run option %s, valid options are %s", runOption, strings.Join(RunOptionSlice(), ", "))
+		}
 	}
 
 	if database == "" {
@@ -79,6 +91,7 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 
 	out := &Config{
 		runOption:        r,
+		AutoDetect:       autoDetect,
 		useSpacy:         useSpacy,
 		Database:         database,
 		Schema:           schema,
@@ -116,7 +129,7 @@ func NewPostgresDBHelper(schema string) DBHelper {
 
 func (p *postgresDBHelper) GetAllTables(ctx context.Context, store *sql.DB) ([]string, error) {
 	// check if schema exists
-	exists, err := utils.SchemaExists(store, p.schema)
+	exists, err := utils.SchemaExists(ctx, store, p.schema)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +138,7 @@ func (p *postgresDBHelper) GetAllTables(ctx context.Context, store *sql.DB) ([]s
 		return nil, fmt.Errorf("schema %s does not exist", p.schema)
 	}
 
-	return utils.GetListFromQuery(store, "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema = '"+p.schema+"'")
+	return utils.GetListFromQuery(ctx, store, "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema = '"+p.schema+"'")
 }
 
 func (p *postgresDBHelper) UpdateTableName(table string) string {
@@ -321,7 +334,7 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 		}
 
 		// fmt.Println("> Processing table", table)
-		s := NewPiiTableScanner(d.h.UpdateTableName(table), d.store, d.tableScanManager, d.cnf.runOption, d.cnf.useSpacy, d.pauseSpinner, d.resumeSpinner)
+		s := NewPiiTableScanner(d.h.UpdateTableName(table), d.store, d.tableScanManager, d.cnf.runOption, d.cnf.AutoDetect, d.cnf.useSpacy, d.pauseSpinner, d.resumeSpinner)
 		if err := s.processTable(ctx); err != nil {
 			return fmt.Errorf("error processing table %s: %v", table, err)
 		}
@@ -394,6 +407,9 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 	}
 
 	scanType := RunOptionTitleMap[d.cnf.runOption]
+	if d.cnf.AutoDetect {
+		scanType = AutoScanTitle
+	}
 	if d.cnf.useSpacy {
 		scanType = RunOption_SpacyScan_Title
 	}
@@ -540,7 +556,8 @@ type piiTableScanner struct {
 
 	tableScanManager *TableScanManager
 
-	runOption RunOption
+	runOption  RunOption
+	autoDetect bool
 
 	runSpacy bool
 
@@ -548,15 +565,16 @@ type piiTableScanner struct {
 	resumeSpinner func()
 }
 
-func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *TableScanManager, runOption RunOption, runSpacy bool, pauseSpinner, resumeSpinner func()) *piiTableScanner {
+func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *TableScanManager, runOption RunOption, autoDetect bool, runSpacy bool, pauseSpinner, resumeSpinner func()) *piiTableScanner {
 	return &piiTableScanner{
 		tableName: tableName,
 		store:     store,
 		// catcher:   catcher,
 		tableScanManager: tableScanManager,
 
-		runOption: runOption,
-		runSpacy:  runSpacy,
+		runOption:  runOption,
+		autoDetect: autoDetect,
+		runSpacy:   runSpacy,
 
 		pauseSpinner:  pauseSpinner,
 		resumeSpinner: resumeSpinner,
@@ -583,8 +601,8 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 
 	effectiveOption := p.runOption
 	var rowCount int
-	if p.runOption == RunOption_Auto || p.runOption == RunOption_DataScan || p.runOption == RunOption_DeepScan || p.runOption == RunOption_SpacyScan {
-		rowCount, err = utils.TableRowCount(p.store, p.tableName)
+	if p.autoDetect || p.runOption == RunOption_DataScan || p.runOption == RunOption_DeepScan || p.runOption == RunOption_SpacyScan {
+		rowCount, err = utils.TableRowCount(ctx, p.store, p.tableName)
 		if err != nil {
 			return fmt.Errorf("error getting row count for table %s: %v", p.tableName, err)
 		}
@@ -593,7 +611,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 		}
 	}
 
-	if p.runOption == RunOption_Auto {
+	if p.autoDetect {
 		if rowCount < AUTO_SCAN_ROW_THRESHOLD {
 			effectiveOption = RunOption_DeepScan
 			if p.pauseSpinner != nil {
@@ -691,14 +709,14 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 	}
 
 	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 1"))
-	stmt, err := p.store.Prepare(query)
+	stmt, err := p.store.PrepareContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %v query:(%s)", err, query)
 	}
 
 	defer stmt.Close()
 	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 12"))
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return fmt.Errorf("error executing query: %v", err)
 	}
@@ -708,6 +726,9 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 	count := len(columns)
 
 	for rows.Next() {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		// fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 1234"))
 		if barchan != nil {
 			barchan <- struct{}{}
@@ -778,12 +799,12 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 
 func (p *piiTableScanner) processColumns(ctx context.Context) ([]string, error) {
 
-	stmt, err := p.store.Prepare(fmt.Sprintf(`SELECT * FROM %s limit 0`, p.tableName))
+	stmt, err := p.store.PrepareContext(ctx, fmt.Sprintf(`SELECT * FROM %s limit 0`, p.tableName))
 	if err != nil {
 		return nil, fmt.Errorf("error preparing statement: %v", err)
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %v", err)
 	}

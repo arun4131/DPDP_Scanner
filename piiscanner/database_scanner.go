@@ -442,7 +442,7 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 					if PiiEntitiesForWeightMergeLogic.Contains(label) {
 						columnWeight := piiMap.ColumnMap["regex"][label].Weight
 						if columnWeight >= 0.4 {
-							finalWeight = (columnWeight + 1.0) / 2
+							finalWeight = (columnWeight + finalWeight) / 2
 						}
 					}
 
@@ -479,16 +479,16 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 					fallbackDetector := NewRegexValueDetector()
 					if err := fallbackDetector.Init(); err == nil {
 						fallbackContext := ColumnContext{
-							PIILabel_BankAccountNumber:      true,
-							PIILabel_ChequeNumber:         true,
-							PIILabel_CIFNumber:            true,
-							PIILabel_LoanAccountNumber:    true,
+							PIILabel_BankAccountNumber:     true,
+							PIILabel_ChequeNumber:          true,
+							PIILabel_CIFNumber:             true,
+							PIILabel_LoanAccountNumber:     true,
 							PIILabel_InsurancePolicyNumber: true,
-							PIILabel_FASTagID:             true,
-							PIILabel_CVV:                  true,
-							PIILabel_Phone:                true,
-							PIILabel_MICRCode:             true,
-							PIILabel_UAN:                  true,
+							PIILabel_FASTagID:              true,
+							PIILabel_CVV:                   true,
+							PIILabel_Phone:                 true,
+							PIILabel_MICRCode:              true,
+							PIILabel_UAN:                   true,
 						}
 
 						labelHits := make(map[PIILabel]int)

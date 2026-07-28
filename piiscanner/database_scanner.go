@@ -489,7 +489,6 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 							PIILabel_Phone:                true,
 							PIILabel_MICRCode:             true,
 							PIILabel_UAN:                  true,
-							PIILabel_BirthDate:            true,
 						}
 
 						labelHits := make(map[PIILabel]int)

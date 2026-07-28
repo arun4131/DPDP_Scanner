@@ -1385,20 +1385,20 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_EPFMemberID: {
 			{
-				// Official EPF format
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}/[A-Z]{3}/\d{5}/\d{3}/\d{7}\b`),
+				// Official EPF format: STATE(2)/OFFICE(3)/ESTABLISHMENT(7)/EXTENSION(3)/MEMBER(7) e.g. MH/BAN/0012345/000/0000123
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}/[A-Z]{3}/\d{7}/\d{3}/\d{7}\b`),
 				Weight: 0.95,
 				Region: RegionIndia,
 			},
 			{
-				// Compact format (legacy)
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}\d{5}\d{3}\d{7}\b`),
+				// Compact format (without slashes): 22 characters e.g. MHBAN00123450000000123
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[A-Z]{3}\d{7}\d{3}\d{7}\b`),
 				Weight: 0.95,
 				Region: RegionIndia,
 			},
 			{
-				// EPF-prefixed format
-				Regexp: regexp.MustCompile(`(?i)\bEPF\d{15,18}\b`),
+				// EPF / PF prefixed format e.g. EPF123456789012345, PF123456789012345
+				Regexp: regexp.MustCompile(`(?i)\b(?:EPF|PF)[\s_-]?\d{15,22}\b`),
 				Weight: 0.90,
 				Region: RegionIndia,
 			},

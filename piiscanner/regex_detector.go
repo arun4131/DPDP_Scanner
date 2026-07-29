@@ -316,37 +316,40 @@ func (r *regexColumnDetector) Init() error {
 	r.m = map[PIILabel][]RegexWithWeight{
 		PIILabel_Username: {
 			{
-				// High confidence - exact username/login column names
-				Regexp: regexp.MustCompile(`(?i)^(username|user[\s_-]?name|user|login|login[\s_-]?name|login[\s_-]?user|user[\s_-]?login|loginid|user[\s_-]?code|user[\s_-]?identifier|signin|sign[\s_-]?in|account[\s_-]?user|app[\s_-]?user|web[\s_-]?user|system[\s_-]?user|network[\s_-]?user|portal[\s_-]?user|auth[\s_-]?user|principal[\s_-]?name|user[\s_-]?principal[\s_-]?name|upn)$`),
+				// High confidence - unambiguous username/login column names (word-bounded, matches any prefix/suffix).
+				// Bare "user"/"login" moved to Medium below — too generic, more often an FK reference than a username value.
+				Regexp: regexp.MustCompile(`(?i)\b(username|user[\s_-]?name|login[\s_-]?name|login[\s_-]?user|user[\s_-]?login|loginid|user[\s_-]?code|user[\s_-]?identifier|signin|sign[\s_-]?in|account[\s_-]?user|app[\s_-]?user|web[\s_-]?user|system[\s_-]?user|network[\s_-]?user|portal[\s_-]?user|auth[\s_-]?user|principal[\s_-]?name|user[\s_-]?principal[\s_-]?name|upn)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(username|user[\s_-]?name|login[\s_-]?name|login[\s_-]?user|user[\s_-]?login|user[\s_-]?id|login[\s_-]?id|signin|account[\s_-]?user|portal[\s_-]?user|app[\s_-]?user|web[\s_-]?user|system[\s_-]?user|network[\s_-]?user|auth[\s_-]?user|user[\s_-]?principal[\s_-]?name|principal[\s_-]?name|upn)\b`),
+				// Medium confidence - bare "user"/"login"/"user_id"/"login_id"; ambiguous (often numeric FK, not a username value)
+				Regexp: regexp.MustCompile(`(?i)\b(user|login|user[\s_-]?id|login[\s_-]?id)\b`),
 				Weight: 0.5,
 			},
 		},
 		PIILabel_Name: {
 			{
-				// High confidence - exact person name column names
-				Regexp: regexp.MustCompile(`(?i)^(name|first[\s_-]?name|firstname|f[\s_-]?name|given[\s_-]?name|givenname|middle[\s_-]?name|middlename|last[\s_-]?name|lastname|l[\s_-]?name|surname|family[\s_-]?name|familyname|full[\s_-]?name|fullname|display[\s_-]?name|displayname|legal[\s_-]?name|preferred[\s_-]?name|preferredname|maiden[\s_-]?name|maidenname|birth[\s_-]?name|birthname|nick[\s_-]?name|nickname|screen[\s_-]?name|screenname|profile[\s_-]?name|profilename|person[\s_-]?name|personname|contact[\s_-]?name|contactname|employee[\s_-]?name|employeename|customer[\s_-]?name|customername|client[\s_-]?name|clientname|vendor[\s_-]?name|vendorname|supplier[\s_-]?name|suppliername|owner[\s_-]?name|ownername|account[\s_-]?name|accountname|author[\s_-]?name|authorname|candidate[\s_-]?name|candidatename|student[\s_-]?name|studentname|guardian[\s_-]?name|guardianname|father[\s_-]?name|fathername|mother[\s_-]?name|mothername|spouse[\s_-]?name|spousename|nominee[\s_-]?name|nomineename|beneficiary[\s_-]?name|beneficiaryname|organization[\s_-]?name|organisation[\s_-]?name|company[\s_-]?name|business[\s_-]?name|entity[\s_-]?name|person)$`),
+				// High confidence - person-name related column names (word-bounded).
+				// Bare "person" moved to Medium below — alone it's often an enum/type/FK label, not a name value.
+				Regexp: regexp.MustCompile(`(?i)\b(name|first[\s_-]?name|firstname|f[\s_-]?name|given[\s_-]?name|givenname|middle[\s_-]?name|middlename|last[\s_-]?name|lastname|l[\s_-]?name|surname|family[\s_-]?name|familyname|full[\s_-]?name|fullname|display[\s_-]?name|displayname|legal[\s_-]?name|preferred[\s_-]?name|preferredname|maiden[\s_-]?name|maidenname|birth[\s_-]?name|birthname|nick[\s_-]?name|nickname|screen[\s_-]?name|screenname|profile[\s_-]?name|profilename|person[\s_-]?name|personname|contact[\s_-]?name|contactname|employee[\s_-]?name|employeename|customer[\s_-]?name|customername|client[\s_-]?name|clientname|vendor[\s_-]?name|vendorname|supplier[\s_-]?name|suppliername|owner[\s_-]?name|ownername|account[\s_-]?name|accountname|author[\s_-]?name|authorname|candidate[\s_-]?name|candidatename|student[\s_-]?name|studentname|guardian[\s_-]?name|guardianname|father[\s_-]?name|fathername|mother[\s_-]?name|mothername|spouse[\s_-]?name|spousename|nominee[\s_-]?name|nomineename|beneficiary[\s_-]?name|beneficiaryname|organization[\s_-]?name|organisation[\s_-]?name|company[\s_-]?name|business[\s_-]?name|entity[\s_-]?name)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - name aliases within column names
-				Regexp: regexp.MustCompile(`(?i)\b(first[\s_-]?name|last[\s_-]?name|full[\s_-]?name|given[\s_-]?name|middle[\s_-]?name|display[\s_-]?name|legal[\s_-]?name|preferred[\s_-]?name|maiden[\s_-]?name|birth[\s_-]?name|nick[\s_-]?name|screen[\s_-]?name|profile[\s_-]?name|person[\s_-]?name|contact[\s_-]?name|employee[\s_-]?name|customer[\s_-]?name|client[\s_-]?name|vendor[\s_-]?name|supplier[\s_-]?name|owner[\s_-]?name|account[\s_-]?name|author[\s_-]?name|candidate[\s_-]?name|student[\s_-]?name|guardian[\s_-]?name|father[\s_-]?name|mother[\s_-]?name|spouse[\s_-]?name|nominee[\s_-]?name|beneficiary[\s_-]?name|organization[\s_-]?name|organisation[\s_-]?name|company[\s_-]?name|business[\s_-]?name|entity[\s_-]?name)\b`),
+				// Medium confidence - bare "person"; ambiguous on its own (often an enum/type/FK label)
+				Regexp: regexp.MustCompile(`(?i)\b(person)\b`),
 				Weight: 0.5,
 			},
 		},
 		PIILabel_Email: {
 			{
-				// High confidence - exact email column names
-				Regexp: regexp.MustCompile(`(?i)^(email|e[\s_-]?mail|mail|email[\s_-]?address|email[\s_-]?addr|emailaddress|mailaddress|primary[\s_-]?email|secondary[\s_-]?email|alternate[\s_-]?email|alt[\s_-]?email|personal[\s_-]?email|official[\s_-]?email|work[\s_-]?email|office[\s_-]?email|business[\s_-]?email|company[\s_-]?email|corporate[\s_-]?email|contact[\s_-]?email|user[\s_-]?email|login[\s_-]?email|registered[\s_-]?email|registered[\s_-]?mail|recovery[\s_-]?email|notification[\s_-]?email|email[\s_-]?id|mail[\s_-]?id|emailid|mailid|email[\s_-]?addr|email[\s_-]?contact)$`),
+				// High confidence - email related column names (word-bounded).
+				// Bare "mail" moved to Medium below — collides with physical/postal mail.
+				Regexp: regexp.MustCompile(`(?i)\b(email|e[\s_-]?mail|email[\s_-]?address|email[\s_-]?addr|emailaddress|mailaddress|mail[\s_-]?address|primary[\s_-]?email|secondary[\s_-]?email|alternate[\s_-]?email|alt[\s_-]?email|personal[\s_-]?email|official[\s_-]?email|work[\s_-]?email|office[\s_-]?email|business[\s_-]?email|company[\s_-]?email|corporate[\s_-]?email|contact[\s_-]?email|user[\s_-]?email|login[\s_-]?email|registered[\s_-]?email|registered[\s_-]?mail|recovery[\s_-]?email|notification[\s_-]?email|email[\s_-]?id|mail[\s_-]?id|emailid|mailid|email[\s_-]?contact)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(email|e[\s_-]?mail|mail|email[\s_-]?address|mail[\s_-]?address|primary[\s_-]?email|secondary[\s_-]?email|alternate[\s_-]?email|personal[\s_-]?email|official[\s_-]?email|work[\s_-]?email|office[\s_-]?email|business[\s_-]?email|company[\s_-]?email|corporate[\s_-]?email|contact[\s_-]?email|user[\s_-]?email|login[\s_-]?email|registered[\s_-]?email|recovery[\s_-]?email|notification[\s_-]?email|email[\s_-]?id|mail[\s_-]?id)\b`),
+				// Medium confidence - bare "mail"; ambiguous (postal/physical mail, not necessarily an email address)
+				Regexp: regexp.MustCompile(`(?i)\b(mail)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -357,13 +360,14 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Phone: {
 			{
-				// High confidence - exact phone/mobile/telephone column names
-				Regexp: regexp.MustCompile(`(?i)^(phone|phone[\s_-]?number|phone[\s_-]?no|phone[\s_-]?num|phone[\s_-]?id|ph[\s_-]?number|ph[\s_-]?no|mobile|mobile[\s_-]?number|mobile[\s_-]?no|mobile[\s_-]?num|mobile[\s_-]?phone|mobile[\s_-]?contact|cell|cell[\s_-]?phone|cellphone|cell[\s_-]?number|contact[\s_-]?number|contact[\s_-]?no|contact[\s_-]?phone|telephone|tele[\s_-]?phone|telephone[\s_-]?number|telephone[\s_-]?no|telephone[\s_-]?num|tele[\s_-]?phone[\s_-]?number|tele[\s_-]?phone[\s_-]?no|tele[\s_-]?phone[\s_-]?num|tel|tel[\s_-]?number|tel[\s_-]?no|tel[\s_-]?num|landline|land[\s_-]?line|landline[\s_-]?number|office[\s_-]?phone|home[\s_-]?phone|work[\s_-]?phone|business[\s_-]?phone|company[\s_-]?phone|personal[\s_-]?phone|primary[\s_-]?phone|secondary[\s_-]?phone|alternate[\s_-]?phone|alt[\s_-]?phone|emergency[\s_-]?contact|emergency[\s_-]?phone|contact)$`),
+				// High confidence - phone/mobile/telephone related column names (word-bounded).
+				// Bare "contact" removed entirely; bare "cell" moved to Medium below (spreadsheet/biology/prison cell).
+				Regexp: regexp.MustCompile(`(?i)\b(phone|phone[\s_-]?number|phone[\s_-]?no|phone[\s_-]?num|phone[\s_-]?id|ph[\s_-]?number|ph[\s_-]?no|mobile|mobile[\s_-]?number|mobile[\s_-]?no|mobile[\s_-]?num|mobile[\s_-]?phone|mobile[\s_-]?contact|cell[\s_-]?phone|cellphone|cell[\s_-]?number|contact[\s_-]?number|contact[\s_-]?no|contact[\s_-]?phone|telephone|tele[\s_-]?phone|telephone[\s_-]?number|telephone[\s_-]?no|telephone[\s_-]?num|tele[\s_-]?phone[\s_-]?number|tele[\s_-]?phone[\s_-]?no|tele[\s_-]?phone[\s_-]?num|tel|tel[\s_-]?number|tel[\s_-]?no|tel[\s_-]?num|landline|land[\s_-]?line|landline[\s_-]?number|office[\s_-]?phone|home[\s_-]?phone|work[\s_-]?phone|business[\s_-]?phone|company[\s_-]?phone|personal[\s_-]?phone|primary[\s_-]?phone|secondary[\s_-]?phone|alternate[\s_-]?phone|alt[\s_-]?phone|emergency[\s_-]?contact|emergency[\s_-]?phone)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(phone[\s_-]?number|phone[\s_-]?no|phone[\s_-]?num|mobile[\s_-]?number|mobile[\s_-]?no|mobile[\s_-]?num|mobile[\s_-]?phone|cell[\s_-]?phone|cell[\s_-]?number|contact[\s_-]?number|contact[\s_-]?phone|telephone|tele[\s_-]?phone|telephone[\s_-]?number|telephone[\s_-]?no|telephone[\s_-]?num|tel[\s_-]?number|tel[\s_-]?no|landline|landline[\s_-]?number|office[\s_-]?phone|home[\s_-]?phone|work[\s_-]?phone|business[\s_-]?phone|company[\s_-]?phone|personal[\s_-]?phone|primary[\s_-]?phone|secondary[\s_-]?phone|alternate[\s_-]?phone|emergency[\s_-]?phone|emergency[\s_-]?contact)\b`),
+				// Medium confidence - bare "cell"; ambiguous (spreadsheet cell, biology cell, prison cell, telecom cell tower)
+				Regexp: regexp.MustCompile(`(?i)\b(cell)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -374,13 +378,14 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_IPAddress: {
 			{
-				// High confidence - exact IP address column names
-				Regexp: regexp.MustCompile(`(?i)^(ip|ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|ipv4[\s_-]?address|ipv6[\s_-]?address|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)$`),
+				// High confidence - IP address related column names (word-bounded).
+				// Bare "ip" moved to Medium below — collides with "Intellectual Property" in legal/patent schemas.
+				Regexp: regexp.MustCompile(`(?i)\b(ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|ipv4[\s_-]?address|ipv6[\s_-]?address|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|client[\s_-]?ip|server[\s_-]?ip|source[\s_-]?ip|destination[\s_-]?ip|dest[\s_-]?ip|remote[\s_-]?ip|local[\s_-]?ip|public[\s_-]?ip|private[\s_-]?ip|host[\s_-]?ip|gateway[\s_-]?ip|proxy[\s_-]?ip|forwarded[\s_-]?ip|origin[\s_-]?ip|request[\s_-]?ip|sender[\s_-]?ip|receiver[\s_-]?ip|visitor[\s_-]?ip|user[\s_-]?ip|device[\s_-]?ip|machine[\s_-]?ip|network[\s_-]?ip|node[\s_-]?ip|endpoint[\s_-]?ip|peer[\s_-]?ip|connection[\s_-]?ip|socket[\s_-]?ip)\b`),
+				// Medium confidence - bare "ip"; ambiguous (Intellectual Property in legal/patent schemas)
+				Regexp: regexp.MustCompile(`(?i)\b(ip)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -391,13 +396,15 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_MacAddress: {
 			{
-				// High confidence - exact MAC address column names
-				Regexp: regexp.MustCompile(`(?i)^(mac|mac[\s_-]?address|macaddr|mac[\s_-]?addr|mac[\s_-]?id|macid|mac[\s_-]?identifier|hardware[\s_-]?address|hardwareaddress|physical[\s_-]?address|physicaladdress|ethernet[\s_-]?address|ethernetaddress|ethernet[\s_-]?mac|ethernetmac|device[\s_-]?mac|devicemac|network[\s_-]?mac|networkmac|adapter[\s_-]?mac|adaptermac|interface[\s_-]?mac|interfacemac|nic[\s_-]?mac|nicmac|host[\s_-]?mac|hostmac|client[\s_-]?mac|clientmac|server[\s_-]?mac|servermac|source[\s_-]?mac|sourcemac|destination[\s_-]?mac|destinationmac|dest[\s_-]?mac|destmac|gateway[\s_-]?mac|gatewaymac|router[\s_-]?mac|routermac|switch[\s_-]?mac|switchmac|bssid|ap[\s_-]?mac|access[\s_-]?point[\s_-]?mac|wifi[\s_-]?mac|wireless[\s_-]?mac|bluetooth[\s_-]?mac)$`),
+				// High confidence - MAC address related column names (word-bounded).
+				// Bare "mac" and "physical_address" moved to Medium below (see note).
+				Regexp: regexp.MustCompile(`(?i)\b(mac[\s_-]?address|macaddr|mac[\s_-]?addr|mac[\s_-]?id|macid|mac[\s_-]?identifier|hardware[\s_-]?address|hardwareaddress|ethernet[\s_-]?address|ethernetaddress|ethernet[\s_-]?mac|ethernetmac|device[\s_-]?mac|devicemac|network[\s_-]?mac|networkmac|adapter[\s_-]?mac|adaptermac|interface[\s_-]?mac|interfacemac|nic[\s_-]?mac|nicmac|host[\s_-]?mac|hostmac|client[\s_-]?mac|clientmac|server[\s_-]?mac|servermac|source[\s_-]?mac|sourcemac|destination[\s_-]?mac|destinationmac|dest[\s_-]?mac|destmac|gateway[\s_-]?mac|gatewaymac|router[\s_-]?mac|routermac|switch[\s_-]?mac|switchmac|bssid|ap[\s_-]?mac|access[\s_-]?point[\s_-]?mac|wifi[\s_-]?mac|wireless[\s_-]?mac|bluetooth[\s_-]?mac)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(mac[\s_-]?address|mac[\s_-]?addr|macaddr|hardware[\s_-]?address|physical[\s_-]?address|ethernet[\s_-]?address|ethernet[\s_-]?mac|device[\s_-]?mac|network[\s_-]?mac|adapter[\s_-]?mac|interface[\s_-]?mac|nic[\s_-]?mac|host[\s_-]?mac|client[\s_-]?mac|server[\s_-]?mac|source[\s_-]?mac|destination[\s_-]?mac|dest[\s_-]?mac|gateway[\s_-]?mac|router[\s_-]?mac|switch[\s_-]?mac|bssid|ap[\s_-]?mac|access[\s_-]?point[\s_-]?mac|wifi[\s_-]?mac|wireless[\s_-]?mac|bluetooth[\s_-]?mac)\b`),
+				// Medium confidence - bare "mac" (collides with Apple "Mac"/OS enum/crypto MAC) and
+				// "physical_address" (far more commonly means a home/mailing address than a network MAC)
+				Regexp: regexp.MustCompile(`(?i)\b(mac|physical[\s_-]?address|physicaladdress)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -408,13 +415,19 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Address: {
 			{
-				// High confidence - exact address/location column names
-				Regexp: regexp.MustCompile(`(?i)^(address|address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|address[\s_-]?line[\s_-]?3|address[\s_-]?1|address[\s_-]?2|address[\s_-]?3|addr|addr[\s_-]?line[\s_-]?1|addr[\s_-]?line[\s_-]?2|street|street[\s_-]?address|street[\s_-]?name|road|road[\s_-]?name|lane|avenue|ave|boulevard|blvd|drive|dr|court|ct|circle|cir|place|pl|square|sq|highway|hwy|route|locality|area|region|district|sub[\s_-]?district|village|town|city|municipality|state|province|county|country|nation|territory|zone|borough|ward|sector|block|building|building[\s_-]?name|house|house[\s_-]?number|house[\s_-]?no|flat|flat[\s_-]?number|flat[\s_-]?no|apartment|apartment[\s_-]?number|apt|suite|unit|unit[\s_-]?number|door[\s_-]?number|door[\s_-]?no|plot|plot[\s_-]?number|plot[\s_-]?no|survey[\s_-]?number|survey[\s_-]?no|landmark|near[\s_-]?by|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)$`),
+				// High confidence - unambiguous address-specific column names (word-bounded).
+				// Additional single-word terms demoted below: drive/court/place/route/house/flat/suite/plot/circle/lane
+				// (each collides with a common non-address meaning), plus the abbreviations ave/dr/ct/pl/sq/cir and square.
+				Regexp: regexp.MustCompile(`(?i)\b(address|address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|address[\s_-]?line[\s_-]?3|address[\s_-]?1|address[\s_-]?2|address[\s_-]?3|addr|addr[\s_-]?line[\s_-]?1|addr[\s_-]?line[\s_-]?2|street|street[\s_-]?address|street[\s_-]?name|road|road[\s_-]?name|avenue|boulevard|blvd|highway|hwy|sub[\s_-]?district|country|nation|building|building[\s_-]?name|house[\s_-]?number|house[\s_-]?no|flat[\s_-]?number|flat[\s_-]?no|apartment|apartment[\s_-]?number|apt|unit[\s_-]?number|door[\s_-]?number|door[\s_-]?no|plot[\s_-]?number|plot[\s_-]?no|survey[\s_-]?number|survey[\s_-]?no|landmark|near[\s_-]?by|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common address/location aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|street[\s_-]?address|street[\s_-]?name|road[\s_-]?name|locality|area|region|district|sub[\s_-]?district|village|town|city|municipality|state|province|county|country|territory|zone|borough|ward|sector|block|building[\s_-]?name|house[\s_-]?number|flat[\s_-]?number|apartment[\s_-]?number|suite|unit[\s_-]?number|door[\s_-]?number|plot[\s_-]?number|survey[\s_-]?number|landmark|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
+				// Medium confidence - generic geography/admin words and single road-type words/abbreviations;
+				// each has a plausible non-address meaning (state=status, block=code block, ave=average, dr=doctor/debit,
+				// ct=count, pl=P&L, sq/square=math square, drive=disk/fundraising drive, court=legal court,
+				// circle=telecom/postal circle in India, place=ranking, route=delivery/bus/network route,
+				// house=political House, flat=musical flat, suite=software/test suite, plot=chart plot, lane=traffic/bowling lane)
+				Regexp: regexp.MustCompile(`(?i)\b(locality|area|region|district|village|town|city|municipality|state|province|county|territory|zone|borough|ward|sector|block|unit|ave|dr|ct|pl|sq|cir|square|lane|drive|court|circle|place|route|house|flat|suite|plot)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -425,14 +438,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_PANNumber: {
 			{
-				// High confidence - exact PAN related column names
-				Regexp: regexp.MustCompile(`(?i)^(pan|pan[\s_-]?number|pan[\s_-]?no|pan[\s_-]?num|pan[\s_-]?id|pan[\s_-]?code|pan[\s_-]?card|pan[\s_-]?identifier|pan[\s_-]?details|pan[\s_-]?info|permanent[\s_-]?account[\s_-]?number|permanent[\s_-]?account[\s_-]?no|permanent[\s_-]?account[\s_-]?num|permanent[\s_-]?account[\s_-]?id|permanent[\s_-]?account[\s_-]?code|permanent[\s_-]?account[\s_-]?card|permanent[\s_-]?account[\s_-]?identifier|tax[\s_-]?payer[\s_-]?number|tax[\s_-]?payer[\s_-]?id|tax[\s_-]?payer[\s_-]?identifier|income[\s_-]?tax[\s_-]?number|income[\s_-]?tax[\s_-]?id|income[\s_-]?tax[\s_-]?account|tax[\s_-]?id|tax[\s_-]?identifier|tax[\s_-]?number|taxpayer[\s_-]?id|taxpayer[\s_-]?identifier|taxpayer[\s_-]?number)$`),
+				// High confidence - PAN related column names (word-bounded).
+				// Bare "tax_id"/"tax_identifier"/"tax_number" moved to Medium below — ambiguous even within an
+				// India-region scan (could be a GST reference or generic tax field, not specifically PAN).
+				Regexp: regexp.MustCompile(`(?i)\b(pan|pan[\s_-]?number|pan[\s_-]?no|pan[\s_-]?num|pan[\s_-]?id|pan[\s_-]?code|pan[\s_-]?card|pan[\s_-]?identifier|pan[\s_-]?details|pan[\s_-]?info|permanent[\s_-]?account[\s_-]?number|permanent[\s_-]?account[\s_-]?no|permanent[\s_-]?account[\s_-]?num|permanent[\s_-]?account[\s_-]?id|permanent[\s_-]?account[\s_-]?code|permanent[\s_-]?account[\s_-]?card|permanent[\s_-]?account[\s_-]?identifier|tax[\s_-]?payer[\s_-]?number|tax[\s_-]?payer[\s_-]?id|tax[\s_-]?payer[\s_-]?identifier|income[\s_-]?tax[\s_-]?number|income[\s_-]?tax[\s_-]?id|income[\s_-]?tax[\s_-]?account|taxpayer[\s_-]?id|taxpayer[\s_-]?identifier|taxpayer[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common PAN aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(pan[\s_-]?number|pan[\s_-]?no|pan[\s_-]?num|pan[\s_-]?id|pan[\s_-]?card|pan[\s_-]?identifier|permanent[\s_-]?account[\s_-]?number|permanent[\s_-]?account[\s_-]?id|permanent[\s_-]?account[\s_-]?card|tax[\s_-]?payer[\s_-]?number|tax[\s_-]?payer[\s_-]?id|tax[\s_-]?account[\s_-]?number|income[\s_-]?tax[\s_-]?number|income[\s_-]?tax[\s_-]?id|tax[\s_-]?id|tax[\s_-]?identifier|tax[\s_-]?number|taxpayer[\s_-]?id|taxpayer[\s_-]?identifier|taxpayer[\s_-]?number)\b`),
+				// Medium confidence - bare tax-identifier terms without a "payer"/"income" qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(tax[\s_-]?id|tax[\s_-]?identifier|tax[\s_-]?number)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -445,14 +460,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_DrivingLicenceNumber: {
 			{
-				// High confidence - exact Driving Licence column names
-				Regexp: regexp.MustCompile(`(?i)^(dl|dls|dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|dlno|licence[\s_-]?number|licence[\s_-]?no|license[\s_-]?number|license[\s_-]?no|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card)$`),
+				// High confidence - driving-licence column names qualified with a number/id/card suffix, or a
+				// full driver/driving phrase (word-bounded). Bare "dl"/"dls"/"dlno" moved to Medium below —
+				// "DL" alone is overloaded (download, delivery, digital-learning) in general schemas.
+				Regexp: regexp.MustCompile(`(?i)\b(dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common Driving Licence aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|driver[\s_-]?lic|driver[\s_-]?license|driver[\s_-]?licence|drivers[\s_-]?license|drivers[\s_-]?licence|driver's[\s_-]?license|driver's[\s_-]?licence|driving[\s_-]?license|driving[\s_-]?licence|driving[\s_-]?permit|driver[\s_-]?permit|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id)\b`),
+				// Medium confidence - bare "dl"/"dls"/"dlno" and bare "licence_number"/"license_no" without a driver qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(dl|dls|dlno|licence[\s_-]?number|licence[\s_-]?no|license[\s_-]?number|license[\s_-]?no)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -465,13 +482,14 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Password: {
 			{
-				// High confidence - exact password credential column names
-				Regexp: regexp.MustCompile(`(?i)^(password|passwd|pass|passphrase|pass[\s_-]?phrase|passkey|pass[\s_-]?key|login[\s_-]?password|login[\s_-]?pass|login[\s_-]?passphrase|user[\s_-]?password|user[\s_-]?pass|account[\s_-]?password|account[\s_-]?pass|admin[\s_-]?password|admin[\s_-]?pass|db[\s_-]?password|database[\s_-]?password|root[\s_-]?password|master[\s_-]?password|credential|credentials|credential[\s_-]?password|auth[\s_-]?password|authentication[\s_-]?password|secret|shared[\s_-]?secret|client[\s_-]?secret|api[\s_-]?secret|access[\s_-]?password|account[\s_-]?secret|pwd)$`),
+				// High confidence - password/credential related column names (word-bounded).
+				// Bare "pass" moved to Medium below — collides with "boarding_pass"/"bus_pass"/"gate_pass" or a pass/fail flag.
+				Regexp: regexp.MustCompile(`(?i)\b(password|passwd|passphrase|pass[\s_-]?phrase|passkey|pass[\s_-]?key|login[\s_-]?password|login[\s_-]?pass|login[\s_-]?passphrase|user[\s_-]?password|user[\s_-]?pass|account[\s_-]?password|account[\s_-]?pass|admin[\s_-]?password|admin[\s_-]?pass|db[\s_-]?password|database[\s_-]?password|root[\s_-]?password|master[\s_-]?password|credential|credentials|credential[\s_-]?password|auth[\s_-]?password|authentication[\s_-]?password|secret|shared[\s_-]?secret|client[\s_-]?secret|api[\s_-]?secret|access[\s_-]?password|account[\s_-]?secret|pwd)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common password aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(password|passwd|passphrase|pass[\s_-]?phrase|passkey|pass[\s_-]?key|login[\s_-]?password|user[\s_-]?password|account[\s_-]?password|admin[\s_-]?password|db[\s_-]?password|database[\s_-]?password|root[\s_-]?password|master[\s_-]?password|credential[\s_-]?password|auth[\s_-]?password|authentication[\s_-]?password|shared[\s_-]?secret|client[\s_-]?secret|api[\s_-]?secret|account[\s_-]?secret|pwd)\b`),
+				// Medium confidence - bare "pass"; ambiguous (boarding/bus/gate pass, or a pass/fail status column)
+				Regexp: regexp.MustCompile(`(?i)\b(pass)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -482,28 +500,31 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_CreditCard: {
 			{
-				// High confidence - exact credit/debit card column names
-				Regexp: regexp.MustCompile(`(?i)^(credit[\s_-]?card|credit[\s_-]?card[\s_-]?number|credit[\s_-]?card[\s_-]?no|credit[\s_-]?card[\s_-]?num|debit[\s_-]?card|debit[\s_-]?card[\s_-]?number|debit[\s_-]?card[\s_-]?no|card[\s_-]?number|card[\s_-]?no|card[\s_-]?num|card[\s_-]?id|cc[\s_-]?number|cc[\s_-]?no|cc[\s_-]?num|payment[\s_-]?card|payment[\s_-]?card[\s_-]?number|bank[\s_-]?card|bank[\s_-]?card[\s_-]?number|visa[\s_-]?card|mastercard|rupay[\s_-]?card|card[\s_-]?details|card[\s_-]?info|card[\s_-]?data)$`),
+				// High confidence - credit/debit/payment-qualified card column names (word-bounded).
+				// Bare "card_number"/"card_no"/"card_num"/"card_id"/"card_details"/"card_info"/"card_data" moved to
+				// Medium below — could be a loyalty/membership/library/ID card, not necessarily a payment card.
+				Regexp: regexp.MustCompile(`(?i)\b(credit[\s_-]?card|credit[\s_-]?card[\s_-]?number|credit[\s_-]?card[\s_-]?no|credit[\s_-]?card[\s_-]?num|debit[\s_-]?card|debit[\s_-]?card[\s_-]?number|debit[\s_-]?card[\s_-]?no|cc[\s_-]?number|cc[\s_-]?no|cc[\s_-]?num|payment[\s_-]?card|payment[\s_-]?card[\s_-]?number|bank[\s_-]?card|bank[\s_-]?card[\s_-]?number|visa[\s_-]?card|mastercard|rupay[\s_-]?card)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - explicit credit/debit card patterns only
-				Regexp: regexp.MustCompile(`(?i)\b(credit[\s_-]?card[\s_-]?number|credit[\s_-]?card[\s_-]?no|debit[\s_-]?card[\s_-]?number|debit[\s_-]?card[\s_-]?no|cc[\s_-]?number|cc[\s_-]?no|payment[\s_-]?card[\s_-]?number|bank[\s_-]?card[\s_-]?number)\b`),
+				// Medium confidence - generic card terms without a payment-network/type qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(card[\s_-]?number|card[\s_-]?no|card[\s_-]?num|card[\s_-]?id|card[\s_-]?details|card[\s_-]?info|card[\s_-]?data)\b`),
 				Weight: 0.5,
+				Region: RegionIndia,
+			},
+			{
+				// Low confidence - broad fallback (also covers concatenated names without separators)
+				Regexp: regexp.MustCompile(`(?i)^.*(credit[\s_-]?card|debit[\s_-]?card|card[\s_-]?number|cc[\s_-]?number|payment[\s_-]?card|bank[\s_-]?card).*$`),
+				Weight: 0.3,
 				Region: RegionIndia,
 			},
 		},
 		PIILabel_BirthDate: {
 			{
-				// High confidence - exact Birth Date column names
-				Regexp: regexp.MustCompile(`(?i)^(dob|dob[\s_-]?date|birth[\s_-]?date|birthdate|birth[\s_-]?day|birthday|birth[\s_-]?dt|birth[\s_-]?datetime|birth[\s_-]?time|date[\s_-]?of[\s_-]?birth|date[\s_-]?of[\s_-]?birth[\s_-]?value|date[\s_-]?born|born[\s_-]?date|born[\s_-]?on|birth[\s_-]?on|person[\s_-]?dob|customer[\s_-]?dob|employee[\s_-]?dob|student[\s_-]?dob|client[\s_-]?dob|patient[\s_-]?dob|member[\s_-]?dob|user[\s_-]?dob|candidate[\s_-]?dob|applicant[\s_-]?dob|guardian[\s_-]?dob|child[\s_-]?dob|spouse[\s_-]?dob|nominee[\s_-]?dob|beneficiary[\s_-]?dob)$`),
+				// High confidence - birth date related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(dob|dob[\s_-]?date|birth[\s_-]?date|birthdate|birth[\s_-]?day|birthday|birth[\s_-]?dt|birth[\s_-]?datetime|birth[\s_-]?time|date[\s_-]?of[\s_-]?birth|date[\s_-]?of[\s_-]?birth[\s_-]?value|date[\s_-]?born|born[\s_-]?date|born[\s_-]?on|birth[\s_-]?on|person[\s_-]?dob|customer[\s_-]?dob|employee[\s_-]?dob|student[\s_-]?dob|client[\s_-]?dob|patient[\s_-]?dob|member[\s_-]?dob|user[\s_-]?dob|candidate[\s_-]?dob|applicant[\s_-]?dob|guardian[\s_-]?dob|child[\s_-]?dob|spouse[\s_-]?dob|nominee[\s_-]?dob|beneficiary[\s_-]?dob)\b`),
 				Weight: 1.0,
-			},
-			{
-				// Medium confidence - common Birth Date aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(dob|birth[\s_-]?date|birthdate|birth[\s_-]?day|birthday|birth[\s_-]?dt|date[\s_-]?of[\s_-]?birth|date[\s_-]?born|born[\s_-]?date|person[\s_-]?dob|customer[\s_-]?dob|employee[\s_-]?dob|student[\s_-]?dob|client[\s_-]?dob|patient[\s_-]?dob|member[\s_-]?dob|user[\s_-]?dob|candidate[\s_-]?dob|applicant[\s_-]?dob|guardian[\s_-]?dob|child[\s_-]?dob|spouse[\s_-]?dob|nominee[\s_-]?dob|beneficiary[\s_-]?dob)\b`),
-				Weight: 0.5,
 			},
 			{
 				// Low confidence - broad fallback
@@ -513,13 +534,14 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Location: {
 			{
-				// High confidence - exact GPS/Location column names
-				Regexp: regexp.MustCompile(`(?i)^(location|geo[\s_-]?location|geolocation|geo[\s_-]?point|geo[\s_-]?coordinate|geo[\s_-]?coordinates|gps|gps[\s_-]?location|gps[\s_-]?coordinate|gps[\s_-]?coordinates|coordinate|coordinates|coord|coords|latitude|longitude|lat|long|lng|lat[\s_-]?long|lat[\s_-]?lng|latitude[\s_-]?longitude|latitude[\s_-]?longitude[\s_-]?pair|latitude[\s_-]?coordinate|longitude[\s_-]?coordinate|latitude[\s_-]?value|longitude[\s_-]?value|geo[\s_-]?lat|geo[\s_-]?long|geo[\s_-]?lng|geo[\s_-]?latitude|geo[\s_-]?longitude|x[\s_-]?coordinate|y[\s_-]?coordinate|map[\s_-]?location|map[\s_-]?coordinate|map[\s_-]?coordinates|pin[\s_-]?location|current[\s_-]?location|live[\s_-]?location|device[\s_-]?location|user[\s_-]?location|customer[\s_-]?location|employee[\s_-]?location|client[\s_-]?location|pickup[\s_-]?location|drop[\s_-]?location|dropoff[\s_-]?location|destination[\s_-]?location|source[\s_-]?location|origin[\s_-]?location)$`),
+				// High confidence - GPS/location related column names (word-bounded).
+				// Bare "long" moved to Medium below — collides with the "long"/"long int" data-type name.
+				Regexp: regexp.MustCompile(`(?i)\b(location|geo[\s_-]?location|geolocation|geo[\s_-]?point|geo[\s_-]?coordinate|geo[\s_-]?coordinates|gps|gps[\s_-]?location|gps[\s_-]?coordinate|gps[\s_-]?coordinates|coordinate|coordinates|coord|coords|latitude|longitude|lat|lng|lat[\s_-]?long|lat[\s_-]?lng|latitude[\s_-]?longitude|latitude[\s_-]?longitude[\s_-]?pair|latitude[\s_-]?coordinate|longitude[\s_-]?coordinate|latitude[\s_-]?value|longitude[\s_-]?value|geo[\s_-]?lat|geo[\s_-]?long|geo[\s_-]?lng|geo[\s_-]?latitude|geo[\s_-]?longitude|x[\s_-]?coordinate|y[\s_-]?coordinate|map[\s_-]?location|map[\s_-]?coordinate|map[\s_-]?coordinates|pin[\s_-]?location|current[\s_-]?location|live[\s_-]?location|device[\s_-]?location|user[\s_-]?location|customer[\s_-]?location|employee[\s_-]?location|client[\s_-]?location|pickup[\s_-]?location|drop[\s_-]?location|dropoff[\s_-]?location|destination[\s_-]?location|source[\s_-]?location|origin[\s_-]?location)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common location aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(location|geo[\s_-]?location|geolocation|geo[\s_-]?coordinate|gps[\s_-]?location|gps[\s_-]?coordinate|coordinate|coordinates|coord|coords|latitude|longitude|lat[\s_-]?long|lat[\s_-]?lng|latitude[\s_-]?longitude|geo[\s_-]?latitude|geo[\s_-]?longitude|map[\s_-]?location|current[\s_-]?location|live[\s_-]?location|device[\s_-]?location|user[\s_-]?location|pickup[\s_-]?location|drop[\s_-]?location|destination[\s_-]?location|origin[\s_-]?location)\b`),
+				// Medium confidence - bare "long"; ambiguous (commonly a data-type name, not longitude)
+				Regexp: regexp.MustCompile(`(?i)\b(long)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -530,13 +552,15 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_OAuthToken: {
 			{
-				// High confidence - exact OAuth token related column names
-				Regexp: regexp.MustCompile(`(?i)^(oauth|oauth[\s_-]?token|oauth[\s_-]?access[\s_-]?token|oauth[\s_-]?refresh[\s_-]?token|oauth[\s_-]?bearer[\s_-]?token|oauth[\s_-]?id[\s_-]?token|oauth[\s_-]?token[\s_-]?secret|oauth[\s_-]?consumer[\s_-]?key|oauth[\s_-]?consumer[\s_-]?secret|oauth[\s_-]?client[\s_-]?id|oauth[\s_-]?client[\s_-]?secret|oauth[\s_-]?verifier|oauth[\s_-]?verifier[\s_-]?secret|oauth[\s_-]?code|oauth[\s_-]?authorization[\s_-]?code|oauth[\s_-]?grant[\s_-]?token|oauth[\s_-]?credential|oauth[\s_-]?credentials|oauth[\s_-]?session[\s_-]?token|oauth[\s_-]?auth[\s_-]?token|oauth[\s_-]?auth[\s_-]?code|oauth[\s_-]?token[\s_-]?value|oauth[\s_-]?token[\s_-]?id|oauth[\s_-]?access[\s_-]?key|oauth[\s_-]?secret|access[\s_-]?token|accesstoken|refresh[\s_-]?token|refreshtoken|bearer[\s_-]?token|id[\s_-]?token|user[\s_-]?token|usertoken|auth[\s_-]?token|google[\s_-]?token|google[\s_-]?auth[\s_-]?token|google[\s_-]?token[\s_-]?id|google[\s_-]?tokenid|google[\s_-]?auth[\s_-]?token[\s_-]?id|google[\s_-]?auth[\s_-]?tokenid|token[\s_-]?id|tokenid|token)$`),
+				// High confidence - OAuth/auth-qualified token column names (word-bounded).
+				// Bare "token"/"tokenid"/"token_id" moved to Medium below — too generic
+				// (pagination tokens, CSRF tokens, idempotency keys, feature-flag tokens all use that name).
+				Regexp: regexp.MustCompile(`(?i)\b(oauth|oauth[\s_-]?token|oauth[\s_-]?access[\s_-]?token|oauth[\s_-]?refresh[\s_-]?token|oauth[\s_-]?bearer[\s_-]?token|oauth[\s_-]?id[\s_-]?token|oauth[\s_-]?token[\s_-]?secret|oauth[\s_-]?consumer[\s_-]?key|oauth[\s_-]?consumer[\s_-]?secret|oauth[\s_-]?client[\s_-]?id|oauth[\s_-]?client[\s_-]?secret|oauth[\s_-]?verifier|oauth[\s_-]?verifier[\s_-]?secret|oauth[\s_-]?code|oauth[\s_-]?authorization[\s_-]?code|oauth[\s_-]?grant[\s_-]?token|oauth[\s_-]?credential|oauth[\s_-]?credentials|oauth[\s_-]?session[\s_-]?token|oauth[\s_-]?auth[\s_-]?token|oauth[\s_-]?auth[\s_-]?code|oauth[\s_-]?token[\s_-]?value|oauth[\s_-]?token[\s_-]?id|oauth[\s_-]?access[\s_-]?key|oauth[\s_-]?secret|access[\s_-]?token|accesstoken|refresh[\s_-]?token|refreshtoken|bearer[\s_-]?token|id[\s_-]?token|user[\s_-]?token|usertoken|auth[\s_-]?token|google[\s_-]?token|google[\s_-]?auth[\s_-]?token|google[\s_-]?token[\s_-]?id|google[\s_-]?tokenid|google[\s_-]?auth[\s_-]?token[\s_-]?id|google[\s_-]?auth[\s_-]?tokenid)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common OAuth aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(oauth[\s_-]?token|oauth[\s_-]?access[\s_-]?token|oauth[\s_-]?refresh[\s_-]?token|oauth[\s_-]?bearer[\s_-]?token|oauth[\s_-]?id[\s_-]?token|oauth[\s_-]?token[\s_-]?secret|oauth[\s_-]?consumer[\s_-]?key|oauth[\s_-]?consumer[\s_-]?secret|oauth[\s_-]?client[\s_-]?id|oauth[\s_-]?client[\s_-]?secret|oauth[\s_-]?verifier|oauth[\s_-]?authorization[\s_-]?code|oauth[\s_-]?grant[\s_-]?token|oauth[\s_-]?credential|oauth[\s_-]?session[\s_-]?token|oauth[\s_-]?auth[\s_-]?token|oauth[\s_-]?auth[\s_-]?code|oauth[\s_-]?token[\s_-]?value)\b`),
+				// Medium confidence - bare "token" references; ambiguous without an oauth/auth/access qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(token[\s_-]?id|tokenid|token)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -547,65 +571,59 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Nationality: {
 			{
-				// High confidence - exact nationality related column names
-				Regexp: regexp.MustCompile(`(?i)^(nationality|nationality[\s_-]?code|nationality[\s_-]?id|nationality[\s_-]?type|nationality[\s_-]?status|nationality[\s_-]?name|nationality[\s_-]?value|nationality[\s_-]?desc|nationality[\s_-]?description|country[\s_-]?of[\s_-]?nationality|citizenship|citizen[\s_-]?ship|citizenship[\s_-]?status|citizenship[\s_-]?type|citizenship[\s_-]?code|citizenship[\s_-]?country|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?status|national[\s_-]?identity|national[\s_-]?origin|country[\s_-]?origin|origin[\s_-]?country|user[\s_-]?nationality)$`),
+				// High confidence - nationality related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(nationality|nationality[\s_-]?code|nationality[\s_-]?id|nationality[\s_-]?type|nationality[\s_-]?status|nationality[\s_-]?name|nationality[\s_-]?value|nationality[\s_-]?desc|nationality[\s_-]?description|country[\s_-]?of[\s_-]?nationality|citizenship|citizen[\s_-]?ship|citizenship[\s_-]?status|citizenship[\s_-]?type|citizenship[\s_-]?code|citizenship[\s_-]?country|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?status|national[\s_-]?identity|national[\s_-]?origin|country[\s_-]?origin|origin[\s_-]?country|user[\s_-]?nationality)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common nationality aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(nationality|nationality[\s_-]?code|nationality[\s_-]?id|country[\s_-]?of[\s_-]?nationality|citizenship|citizen[\s_-]?ship|citizenship[\s_-]?status|citizenship[\s_-]?country|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?status|national[\s_-]?origin|country[\s_-]?origin|origin[\s_-]?country)\b`),
-				Weight: 0.5,
-			},
-			{
-				// Low confidence - nationality specific fallback
+				// Low confidence - broad fallback
 				Regexp: regexp.MustCompile(`(?i)^.*(nationality|country[\s_-]?of[\s_-]?nationality|citizenship|country[\s_-]?of[\s_-]?citizenship|national[\s_-]?origin).*$`),
 				Weight: 0.3,
 			},
 		},
 		PIILabel_Gender: {
 			{
-				// High confidence - exact gender related column names
-				Regexp: regexp.MustCompile(`(?i)^(gender|gender[\s_-]?code|gender[\s_-]?id|gender[\s_-]?type|gender[\s_-]?value|gender[\s_-]?identity|gender[\s_-]?description|gender[\s_-]?desc|sex|sex[\s_-]?code|sex[\s_-]?id|sex[\s_-]?type|sex[\s_-]?value|sex[\s_-]?description|sex[\s_-]?desc|biological[\s_-]?sex|assigned[\s_-]?sex|sex[\s_-]?assigned[\s_-]?at[\s_-]?birth|birth[\s_-]?sex|person[\s_-]?gender|customer[\s_-]?gender|employee[\s_-]?gender|student[\s_-]?gender|client[\s_-]?gender|patient[\s_-]?gender|member[\s_-]?gender|user[\s_-]?gender|candidate[\s_-]?gender|applicant[\s_-]?gender|guardian[\s_-]?gender|spouse[\s_-]?gender|nominee[\s_-]?gender|beneficiary[\s_-]?gender)$`),
+				// High confidence - gender related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(gender|gender[\s_-]?code|gender[\s_-]?id|gender[\s_-]?type|gender[\s_-]?value|gender[\s_-]?identity|gender[\s_-]?description|gender[\s_-]?desc|sex|sex[\s_-]?code|sex[\s_-]?id|sex[\s_-]?type|sex[\s_-]?value|sex[\s_-]?description|sex[\s_-]?desc|biological[\s_-]?sex|assigned[\s_-]?sex|sex[\s_-]?assigned[\s_-]?at[\s_-]?birth|birth[\s_-]?sex|person[\s_-]?gender|customer[\s_-]?gender|employee[\s_-]?gender|student[\s_-]?gender|client[\s_-]?gender|patient[\s_-]?gender|member[\s_-]?gender|user[\s_-]?gender|candidate[\s_-]?gender|applicant[\s_-]?gender|guardian[\s_-]?gender|spouse[\s_-]?gender|nominee[\s_-]?gender|beneficiary[\s_-]?gender)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common gender aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(gender|gender[\s_-]?code|gender[\s_-]?id|gender[\s_-]?identity|sex|sex[\s_-]?code|sex[\s_-]?id|biological[\s_-]?sex|assigned[\s_-]?sex|sex[\s_-]?assigned[\s_-]?at[\s_-]?birth|birth[\s_-]?sex|person[\s_-]?gender|customer[\s_-]?gender|employee[\s_-]?gender|student[\s_-]?gender|client[\s_-]?gender|patient[\s_-]?gender|member[\s_-]?gender|user[\s_-]?gender|candidate[\s_-]?gender|applicant[\s_-]?gender|guardian[\s_-]?gender|spouse[\s_-]?gender|nominee[\s_-]?gender|beneficiary[\s_-]?gender)\b`),
-				Weight: 0.5,
-			},
-			{
-				// Low confidence - gender specific fallback
+				// Low confidence - broad fallback
 				Regexp: regexp.MustCompile(`(?i)^.*(gender|gender[\s_-]?identity|sex|biological[\s_-]?sex|birth[\s_-]?sex|assigned[\s_-]?sex).*$`),
 				Weight: 0.3,
 			},
 		},
 		PIILabel_BankAccountNumber: {
 			{
-				// High confidence - exact bank account related column names
-				Regexp: regexp.MustCompile(`(?i)^(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|bank[\s_-]?account[\s_-]?num|bank[\s_-]?account[\s_-]?no|bank[\s_-]?account[\s_-]?id|bank[\s_-]?account[\s_-]?identifier|account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|checking[\s_-]?account[\s_-]?num|checking[\s_-]?account[\s_-]?no|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|savings[\s_-]?account[\s_-]?num|savings[\s_-]?account[\s_-]?no|current[\s_-]?account|current[\s_-]?account[\s_-]?number|current[\s_-]?account[\s_-]?num|current[\s_-]?account[\s_-]?no|deposit[\s_-]?account|deposit[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number|beneficiary[\s_-]?account|beneficiary[\s_-]?account[\s_-]?number|payee[\s_-]?account|payee[\s_-]?account[\s_-]?number|sender[\s_-]?account|sender[\s_-]?account[\s_-]?number|receiver[\s_-]?account|receiver[\s_-]?account[\s_-]?number|source[\s_-]?account|source[\s_-]?account[\s_-]?number|destination[\s_-]?account|destination[\s_-]?account[\s_-]?number|from[\s_-]?account|to[\s_-]?account|refund[\s_-]?account|refund[\s_-]?account[\s_-]?number|refund[\s_-]?account[\s_-]?no|refund[\s_-]?account[\s_-]?num|refund[\s_-]?bank[\s_-]?account|refund[\s_-]?bank[\s_-]?account[\s_-]?number|refund[\s_-]?bank[\s_-]?account[\s_-]?no|user[\s_-]?account|user[\s_-]?account[\s_-]?number|vendor[\s_-]?account|vendor[\s_-]?account[\s_-]?number|merchant[\s_-]?account|merchant[\s_-]?account[\s_-]?number|supplier[\s_-]?account|supplier[\s_-]?account[\s_-]?number|claim[\s_-]?account|claim[\s_-]?account[\s_-]?number|salary[\s_-]?account|salary[\s_-]?account[\s_-]?number)$`),
+				// High confidence - bank/transaction-qualified account column names (word-bounded).
+				// Bare "account_number" and industry-agnostic "X_account" terms moved to Medium below — could be
+				// an app/insurance/utility/ERP-ledger account rather than specifically a bank account.
+				Regexp: regexp.MustCompile(`(?i)\b(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|bank[\s_-]?account[\s_-]?num|bank[\s_-]?account[\s_-]?no|bank[\s_-]?account[\s_-]?id|bank[\s_-]?account[\s_-]?identifier|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|checking[\s_-]?account[\s_-]?num|checking[\s_-]?account[\s_-]?no|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|savings[\s_-]?account[\s_-]?num|savings[\s_-]?account[\s_-]?no|current[\s_-]?account|current[\s_-]?account[\s_-]?number|current[\s_-]?account[\s_-]?num|current[\s_-]?account[\s_-]?no|deposit[\s_-]?account|deposit[\s_-]?account[\s_-]?number|beneficiary[\s_-]?account|beneficiary[\s_-]?account[\s_-]?number|payee[\s_-]?account|payee[\s_-]?account[\s_-]?number|sender[\s_-]?account|sender[\s_-]?account[\s_-]?number|receiver[\s_-]?account|receiver[\s_-]?account[\s_-]?number|source[\s_-]?account|source[\s_-]?account[\s_-]?number|destination[\s_-]?account|destination[\s_-]?account[\s_-]?number|refund[\s_-]?account|refund[\s_-]?account[\s_-]?number|refund[\s_-]?account[\s_-]?no|refund[\s_-]?account[\s_-]?num|refund[\s_-]?bank[\s_-]?account|refund[\s_-]?bank[\s_-]?account[\s_-]?number|refund[\s_-]?bank[\s_-]?account[\s_-]?no|salary[\s_-]?account|salary[\s_-]?account[\s_-]?number)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common bank account aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)(?:^|[\s_-])(bank[\s_-]?account|bank[\s_-]?account[\s_-]?number|checking[\s_-]?account|checking[\s_-]?account[\s_-]?number|savings[\s_-]?account|savings[\s_-]?account[\s_-]?number|current[\s_-]?account|current[\s_-]?account[\s_-]?number|deposit[\s_-]?account|customer[\s_-]?account|beneficiary[\s_-]?account|payee[\s_-]?account|refund[\s_-]?bank[\s_-]?account|refund[\s_-]?account)(?:[\s_-]|$)`),
+				// Medium confidence - industry-agnostic account terms; need value corroboration
+				Regexp: regexp.MustCompile(`(?i)\b(account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|from[\s_-]?account|to[\s_-]?account|user[\s_-]?account|user[\s_-]?account[\s_-]?number|vendor[\s_-]?account|vendor[\s_-]?account[\s_-]?number|merchant[\s_-]?account|merchant[\s_-]?account[\s_-]?number|supplier[\s_-]?account|supplier[\s_-]?account[\s_-]?number|claim[\s_-]?account|claim[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number)\b`),
 				Weight: 0.5,
 			},
 			{
-				// Low confidence - bank account specific fallback
+				// Low confidence - bank account specific fallback (concatenated names without separators)
 				Regexp: regexp.MustCompile(`(?i)^.*(bank[\s_-]?account|checking[\s_-]?account|savings[\s_-]?account|current[\s_-]?account|deposit[\s_-]?account|account[\s_-]?number|acct[\s_-]?number).*$`),
 				Weight: 0.3,
 			},
 		},
 		PIILabel_DematAccountNumber: {
 			{
-				// High confidence - exact Demat account related column names
-				Regexp: regexp.MustCompile(`(?i)^(demat|demat[\s_-]?account|demat[\s_-]?account[\s_-]?number|demat[\s_-]?account[\s_-]?num|demat[\s_-]?account[\s_-]?no|demat[\s_-]?account[\s_-]?id|demat[\s_-]?account[\s_-]?identifier|demat[\s_-]?number|demat[\s_-]?num|demat[\s_-]?no|demat[\s_-]?id|demat[\s_-]?identifier|demat[\s_-]?acc|demat[\s_-]?acc[\s_-]?number|demat[\s_-]?acc[\s_-]?num|demat[\s_-]?acc[\s_-]?no|bo[\s_-]?id|bo[\s_-]?number|bo[\s_-]?account|bo[\s_-]?account[\s_-]?number|beneficiary[\s_-]?owner|beneficiary[\s_-]?owner[\s_-]?id|beneficiary[\s_-]?owner[\s_-]?number|beneficiary[\s_-]?owner[\s_-]?account|beneficiary[\s_-]?owner[\s_-]?account[\s_-]?number|dp[\s_-]?id|dp[\s_-]?identifier|dp[\s_-]?account|dp[\s_-]?account[\s_-]?number|depository[\s_-]?participant[\s_-]?id|depository[\s_-]?participant[\s_-]?account|depository[\s_-]?account|depository[\s_-]?account[\s_-]?number)$`),
+				// High confidence - demat-qualified column names (word-bounded).
+				// Bare "bo_id"/"bo_number"/"bo_account"/"dp_id"/"dp_account" moved to Medium below —
+				// "BO" (Business/Back/Branch Office) and "DP" (Display Picture/Data Processing/Down Payment) are overloaded.
+				Regexp: regexp.MustCompile(`(?i)\b(demat|demat[\s_-]?account|demat[\s_-]?account[\s_-]?number|demat[\s_-]?account[\s_-]?num|demat[\s_-]?account[\s_-]?no|demat[\s_-]?account[\s_-]?id|demat[\s_-]?account[\s_-]?identifier|demat[\s_-]?number|demat[\s_-]?num|demat[\s_-]?no|demat[\s_-]?id|demat[\s_-]?identifier|demat[\s_-]?acc|demat[\s_-]?acc[\s_-]?number|demat[\s_-]?acc[\s_-]?num|demat[\s_-]?acc[\s_-]?no|beneficiary[\s_-]?owner|beneficiary[\s_-]?owner[\s_-]?id|beneficiary[\s_-]?owner[\s_-]?number|beneficiary[\s_-]?owner[\s_-]?account|beneficiary[\s_-]?owner[\s_-]?account[\s_-]?number|depository[\s_-]?participant[\s_-]?id|depository[\s_-]?participant[\s_-]?account|depository[\s_-]?account|depository[\s_-]?account[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common Demat account aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(demat[\s_-]?account|demat[\s_-]?account[\s_-]?number|demat[\s_-]?number|demat[\s_-]?acc|bo[\s_-]?id|bo[\s_-]?account|beneficiary[\s_-]?owner|beneficiary[\s_-]?owner[\s_-]?id|beneficiary[\s_-]?account|dp[\s_-]?id|dp[\s_-]?account|depository[\s_-]?participant[\s_-]?id|depository[\s_-]?account)\b`),
+				// Medium confidence - bare "BO"/"DP" abbreviations; overloaded outside the depository context
+				Regexp: regexp.MustCompile(`(?i)\b(bo[\s_-]?id|bo[\s_-]?number|bo[\s_-]?account|bo[\s_-]?account[\s_-]?number|dp[\s_-]?id|dp[\s_-]?identifier|dp[\s_-]?account|dp[\s_-]?account[\s_-]?number)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -618,14 +636,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_ChequeNumber: {
 			{
-				// High confidence - exact cheque/check number related column names
-				Regexp: regexp.MustCompile(`(?i)^(cheque|cheque[\s_-]?number|cheque[\s_-]?num|cheque[\s_-]?no|cheque[\s_-]?id|cheque[\s_-]?identifier|cheque[\s_-]?serial|cheque[\s_-]?serial[\s_-]?number|cheque[\s_-]?reference|cheque[\s_-]?reference[\s_-]?number|cheque[\s_-]?leaf|cheque[\s_-]?leaf[\s_-]?number|check|check[\s_-]?number|check[\s_-]?num|check[\s_-]?no|check[\s_-]?id|check[\s_-]?identifier|check[\s_-]?serial|check[\s_-]?serial[\s_-]?number|check[\s_-]?reference|check[\s_-]?reference[\s_-]?number|check[\s_-]?leaf|check[\s_-]?leaf[\s_-]?number|bank[\s_-]?cheque|bank[\s_-]?cheque[\s_-]?number|bank[\s_-]?check|bank[\s_-]?check[\s_-]?number|issued[\s_-]?cheque|issued[\s_-]?cheque[\s_-]?number|issued[\s_-]?check|issued[\s_-]?check[\s_-]?number|payee[\s_-]?cheque|payee[\s_-]?cheque[\s_-]?number|payer[\s_-]?cheque|payer[\s_-]?cheque[\s_-]?number|cheque[\s_-]?details|check[\s_-]?details|refund[\s_-]?cheque|refund[\s_-]?cheque[\s_-]?number|refund[\s_-]?cheque[\s_-]?num|refund[\s_-]?cheque[\s_-]?no|refund[\s_-]?check|refund[\s_-]?check[\s_-]?number|refund[\s_-]?check[\s_-]?num|refund[\s_-]?check[\s_-]?no|vendor[\s_-]?cheque|customer[\s_-]?cheque|salary[\s_-]?cheque)$`),
+				// High confidence - "cheque"-spelling terms (unambiguous), plus qualified "check"-spelling terms.
+				// Bare "check"/"check_number" etc (American spelling, unqualified) moved to Medium below —
+				// "check" alone is heavily overloaded (validation check, checked flag, checklist, quality check).
+				Regexp: regexp.MustCompile(`(?i)\b(cheque|cheque[\s_-]?number|cheque[\s_-]?num|cheque[\s_-]?no|cheque[\s_-]?id|cheque[\s_-]?identifier|cheque[\s_-]?serial|cheque[\s_-]?serial[\s_-]?number|cheque[\s_-]?reference|cheque[\s_-]?reference[\s_-]?number|cheque[\s_-]?leaf|cheque[\s_-]?leaf[\s_-]?number|bank[\s_-]?cheque|bank[\s_-]?cheque[\s_-]?number|bank[\s_-]?check|bank[\s_-]?check[\s_-]?number|issued[\s_-]?cheque|issued[\s_-]?cheque[\s_-]?number|issued[\s_-]?check|issued[\s_-]?check[\s_-]?number|payee[\s_-]?cheque|payee[\s_-]?cheque[\s_-]?number|payer[\s_-]?cheque|payer[\s_-]?cheque[\s_-]?number|cheque[\s_-]?details|refund[\s_-]?cheque|refund[\s_-]?cheque[\s_-]?number|refund[\s_-]?cheque[\s_-]?num|refund[\s_-]?cheque[\s_-]?no|refund[\s_-]?check|refund[\s_-]?check[\s_-]?number|refund[\s_-]?check[\s_-]?num|refund[\s_-]?check[\s_-]?no|vendor[\s_-]?cheque|customer[\s_-]?cheque|salary[\s_-]?cheque)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common cheque aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)(?:^|[\s_-])(cheque|cheque[\s_-]?number|cheque[\s_-]?num|cheque[\s_-]?no|cheque[\s_-]?serial|cheque[\s_-]?reference|cheque[\s_-]?leaf|check|check[\s_-]?number|check[\s_-]?num|check[\s_-]?no|check[\s_-]?serial|check[\s_-]?reference|check[\s_-]?leaf|bank[\s_-]?cheque|bank[\s_-]?check|issued[\s_-]?cheque|issued[\s_-]?check|payee[\s_-]?cheque|payer[\s_-]?cheque|refund[\s_-]?cheque|refund[\s_-]?check)(?:[\s_-]|$)`),
+				// Medium confidence - unqualified "check"-spelling terms; ambiguous with generic validation/checklist usage
+				Regexp: regexp.MustCompile(`(?i)\b(check|check[\s_-]?number|check[\s_-]?num|check[\s_-]?no|check[\s_-]?id|check[\s_-]?identifier|check[\s_-]?serial|check[\s_-]?serial[\s_-]?number|check[\s_-]?reference|check[\s_-]?reference[\s_-]?number|check[\s_-]?leaf|check[\s_-]?leaf[\s_-]?number|check[\s_-]?details)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -638,14 +658,17 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_CIFNumber: {
 			{
-				// High confidence - exact CIF related column names
-				Regexp: regexp.MustCompile(`(?i)^(cif|cif[\s_-]?number|cif[\s_-]?num|cif[\s_-]?no|cif[\s_-]?id|cif[\s_-]?identifier|cif[\s_-]?code|cif[\s_-]?value|cif[\s_-]?details|customer[\s_-]?cif|customer[\s_-]?cif[\s_-]?number|customer[\s_-]?cif[\s_-]?num|customer[\s_-]?cif[\s_-]?no|customer[\s_-]?information[\s_-]?file|customer[\s_-]?information[\s_-]?file[\s_-]?number|customer[\s_-]?information[\s_-]?file[\s_-]?id|customer[\s_-]?identifier|customer[\s_-]?identifier[\s_-]?number|customer[\s_-]?identifier[\s_-]?id|customer[\s_-]?number|customer[\s_-]?number[\s_-]?id|customer[\s_-]?number[\s_-]?code|customer[\s_-]?reference|customer[\s_-]?reference[\s_-]?number|customer[\s_-]?reference[\s_-]?id|customer[\s_-]?reference[\s_-]?code|customer[\s_-]?file|customer[\s_-]?file[\s_-]?number)$`),
+				// High confidence - CIF-qualified column names (word-bounded).
+				// Bare "cif" moved to Medium below — collides with the shipping Incoterm "Cost, Insurance, Freight".
+				// Generic "customer_identifier"/"customer_number"/"customer_reference"/"customer_file" also moved
+				// to Medium — those are common in non-banking CRM/retail schemas too, not CIF-specific.
+				Regexp: regexp.MustCompile(`(?i)\b(cif[\s_-]?number|cif[\s_-]?num|cif[\s_-]?no|cif[\s_-]?id|cif[\s_-]?identifier|cif[\s_-]?code|cif[\s_-]?details|customer[\s_-]?cif|customer[\s_-]?cif[\s_-]?number|customer[\s_-]?cif[\s_-]?num|customer[\s_-]?cif[\s_-]?no|customer[\s_-]?information[\s_-]?file|customer[\s_-]?information[\s_-]?file[\s_-]?number|customer[\s_-]?information[\s_-]?file[\s_-]?id)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common CIF aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(cif|cif[\s_-]?number|cif[\s_-]?num|cif[\s_-]?no|cif[\s_-]?id|customer[\s_-]?cif|customer[\s_-]?cif[\s_-]?number|customer[\s_-]?information[\s_-]?file|customer[\s_-]?identifier|customer[\s_-]?number|customer[\s_-]?reference|customer[\s_-]?file)\b`),
+				// Medium confidence - bare "cif"/"cif_value" (Incoterm collision) and generic customer-reference terms
+				Regexp: regexp.MustCompile(`(?i)\b(cif|cif[\s_-]?value|customer[\s_-]?identifier|customer[\s_-]?identifier[\s_-]?number|customer[\s_-]?identifier[\s_-]?id|customer[\s_-]?number|customer[\s_-]?number[\s_-]?id|customer[\s_-]?number[\s_-]?code|customer[\s_-]?reference|customer[\s_-]?reference[\s_-]?number|customer[\s_-]?reference[\s_-]?id|customer[\s_-]?reference[\s_-]?code|customer[\s_-]?file|customer[\s_-]?file[\s_-]?number)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -658,15 +681,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_LoanAccountNumber: {
 			{
-				// High confidence - exact loan account related column names
-				Regexp: regexp.MustCompile(`(?i)^(loan|loan[\s_-]?account|loan[\s_-]?account[\s_-]?number|loan[\s_-]?account[\s_-]?num|loan[\s_-]?account[\s_-]?no|loan[\s_-]?account[\s_-]?id|loan[\s_-]?account[\s_-]?identifier|loan[\s_-]?number|loan[\s_-]?num|loan[\s_-]?no|loan[\s_-]?id|loan[\s_-]?identifier|loan[\s_-]?acc|loan[\s_-]?acc[\s_-]?number|loan[\s_-]?acc[\s_-]?num|loan[\s_-]?acc[\s_-]?no|loan[\s_-]?acct|loan[\s_-]?acct[\s_-]?number|loan[\s_-]?acct[\s_-]?num|loan[\s_-]?acct[\s_-]?no|loan[\s_-]?reference|loan[\s_-]?reference[\s_-]?number|loan[\s_-]?reference[\s_-]?id|loan[\s_-]?reference[\s_-]?code|loan[\s_-]?contract|loan[\s_-]?contract[\s_-]?number|loan[\s_-]?contract[\s_-]?id|loan[\s_-]?agreement|loan[\s_-]?agreement[\s_-]?number|loan[\s_-]?agreement[\s_-]?id|loan[\s_-]?application|loan[\s_-]?application[\s_-]?number|loan[\s_-]?application[\s_-]?id|borrower[\s_-]?loan[\s_-]?account|borrower[\s_-]?loan[\s_-]?number|customer[\s_-]?loan[\s_-]?account|customer[\s_-]?loan[\s_-]?number|home[\s_-]?loan[\s_-]?account|vehicle[\s_-]?loan[\s_-]?account|personal[\s_-]?loan[\s_-]?account|education[\s_-]?loan[\s_-]?account|gold[\s_-]?loan[\s_-]?account|mortgage[\s_-]?loan[\s_-]?account)$`),
+				// High confidence - loan account related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(loan|loan[\s_-]?account|loan[\s_-]?account[\s_-]?number|loan[\s_-]?account[\s_-]?num|loan[\s_-]?account[\s_-]?no|loan[\s_-]?account[\s_-]?id|loan[\s_-]?account[\s_-]?identifier|loan[\s_-]?number|loan[\s_-]?num|loan[\s_-]?no|loan[\s_-]?id|loan[\s_-]?identifier|loan[\s_-]?acc|loan[\s_-]?acc[\s_-]?number|loan[\s_-]?acc[\s_-]?num|loan[\s_-]?acc[\s_-]?no|loan[\s_-]?acct|loan[\s_-]?acct[\s_-]?number|loan[\s_-]?acct[\s_-]?num|loan[\s_-]?acct[\s_-]?no|loan[\s_-]?reference|loan[\s_-]?reference[\s_-]?number|loan[\s_-]?reference[\s_-]?id|loan[\s_-]?reference[\s_-]?code|loan[\s_-]?contract|loan[\s_-]?contract[\s_-]?number|loan[\s_-]?contract[\s_-]?id|loan[\s_-]?agreement|loan[\s_-]?agreement[\s_-]?number|loan[\s_-]?agreement[\s_-]?id|loan[\s_-]?application|loan[\s_-]?application[\s_-]?number|loan[\s_-]?application[\s_-]?id|borrower[\s_-]?loan[\s_-]?account|borrower[\s_-]?loan[\s_-]?number|customer[\s_-]?loan[\s_-]?account|customer[\s_-]?loan[\s_-]?number|home[\s_-]?loan[\s_-]?account|vehicle[\s_-]?loan[\s_-]?account|personal[\s_-]?loan[\s_-]?account|education[\s_-]?loan[\s_-]?account|gold[\s_-]?loan[\s_-]?account|mortgage[\s_-]?loan[\s_-]?account)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common loan account aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(loan[\s_-]?account|loan[\s_-]?account[\s_-]?number|loan[\s_-]?number|loan[\s_-]?num|loan[\s_-]?no|loan[\s_-]?acc|loan[\s_-]?acct|loan[\s_-]?reference|loan[\s_-]?contract|loan[\s_-]?agreement|loan[\s_-]?application|borrower[\s_-]?loan|customer[\s_-]?loan|home[\s_-]?loan|vehicle[\s_-]?loan|personal[\s_-]?loan|education[\s_-]?loan|gold[\s_-]?loan|mortgage[\s_-]?loan)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -678,14 +695,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_InsurancePolicyNumber: {
 			{
-				// High confidence - exact insurance policy related column names
-				Regexp: regexp.MustCompile(`(?i)^(insurance[\s_-]?policy|insurance[\s_-]?policy[\s_-]?number|insurance[\s_-]?policy[\s_-]?num|insurance[\s_-]?policy[\s_-]?no|insurance[\s_-]?policy[\s_-]?id|insurance[\s_-]?policy[\s_-]?identifier|policy|policy[\s_-]?number|policy[\s_-]?num|policy[\s_-]?no|policy[\s_-]?id|policy[\s_-]?identifier|policy[\s_-]?code|policy[\s_-]?reference|policy[\s_-]?reference[\s_-]?number|policy[\s_-]?reference[\s_-]?id|policy[\s_-]?certificate|policy[\s_-]?certificate[\s_-]?number|policy[\s_-]?certificate[\s_-]?id|policy[\s_-]?document|policy[\s_-]?document[\s_-]?number|life[\s_-]?policy|life[\s_-]?policy[\s_-]?number|health[\s_-]?policy|health[\s_-]?policy[\s_-]?number|medical[\s_-]?policy|medical[\s_-]?policy[\s_-]?number|motor[\s_-]?policy|motor[\s_-]?policy[\s_-]?number|vehicle[\s_-]?policy|vehicle[\s_-]?policy[\s_-]?number|car[\s_-]?policy|car[\s_-]?policy[\s_-]?number|travel[\s_-]?policy|travel[\s_-]?policy[\s_-]?number|home[\s_-]?policy|home[\s_-]?policy[\s_-]?number|fire[\s_-]?policy|fire[\s_-]?policy[\s_-]?number|group[\s_-]?policy|group[\s_-]?policy[\s_-]?number|policy[\s_-]?holder[\s_-]?number|insured[\s_-]?policy|insured[\s_-]?policy[\s_-]?number)$`),
+				// High confidence - insurance-qualified policy column names (word-bounded).
+				// Bare "policy"/"policy_number"/"policy_reference"/"policy_certificate"/"policy_document" moved to
+				// Medium below — "policy" alone is heavily overloaded (IT policy, HR policy, firewall/retention policy).
+				Regexp: regexp.MustCompile(`(?i)\b(insurance[\s_-]?policy|insurance[\s_-]?policy[\s_-]?number|insurance[\s_-]?policy[\s_-]?num|insurance[\s_-]?policy[\s_-]?no|insurance[\s_-]?policy[\s_-]?id|insurance[\s_-]?policy[\s_-]?identifier|life[\s_-]?policy|life[\s_-]?policy[\s_-]?number|health[\s_-]?policy|health[\s_-]?policy[\s_-]?number|medical[\s_-]?policy|medical[\s_-]?policy[\s_-]?number|motor[\s_-]?policy|motor[\s_-]?policy[\s_-]?number|vehicle[\s_-]?policy|vehicle[\s_-]?policy[\s_-]?number|car[\s_-]?policy|car[\s_-]?policy[\s_-]?number|travel[\s_-]?policy|travel[\s_-]?policy[\s_-]?number|home[\s_-]?policy|home[\s_-]?policy[\s_-]?number|fire[\s_-]?policy|fire[\s_-]?policy[\s_-]?number|group[\s_-]?policy|group[\s_-]?policy[\s_-]?number|policy[\s_-]?holder[\s_-]?number|insured[\s_-]?policy|insured[\s_-]?policy[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common insurance policy aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(insurance[\s_-]?policy|insurance[\s_-]?policy[\s_-]?number|policy[\s_-]?number|policy[\s_-]?num|policy[\s_-]?no|policy[\s_-]?reference|policy[\s_-]?certificate|life[\s_-]?policy|health[\s_-]?policy|medical[\s_-]?policy|motor[\s_-]?policy|vehicle[\s_-]?policy|car[\s_-]?policy|travel[\s_-]?policy|home[\s_-]?policy|fire[\s_-]?policy|group[\s_-]?policy|insured[\s_-]?policy)\b`),
+				// Medium confidence - bare/generic policy terms without a domain qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(policy|policy[\s_-]?number|policy[\s_-]?num|policy[\s_-]?no|policy[\s_-]?id|policy[\s_-]?identifier|policy[\s_-]?code|policy[\s_-]?reference|policy[\s_-]?reference[\s_-]?number|policy[\s_-]?reference[\s_-]?id|policy[\s_-]?certificate|policy[\s_-]?certificate[\s_-]?number|policy[\s_-]?certificate[\s_-]?id|policy[\s_-]?document|policy[\s_-]?document[\s_-]?number)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -698,14 +717,15 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_FASTagID: {
 			{
-				// High confidence - exact FASTag related column names
-				Regexp: regexp.MustCompile(`(?i)^(fastag|fastag[\s_-]?id|fastag[\s_-]?identifier|fastag[\s_-]?number|fastag[\s_-]?num|fastag[\s_-]?no|fastag[\s_-]?code|fastag[\s_-]?account|fastag[\s_-]?account[\s_-]?number|fastag[\s_-]?account[\s_-]?id|fastag[\s_-]?wallet|fastag[\s_-]?wallet[\s_-]?id|fastag[\s_-]?wallet[\s_-]?number|fastag[\s_-]?customer|fastag[\s_-]?customer[\s_-]?id|fastag[\s_-]?customer[\s_-]?number|fastag[\s_-]?reference|fastag[\s_-]?reference[\s_-]?number|fastag[\s_-]?reference[\s_-]?id|fastag[\s_-]?serial|fastag[\s_-]?serial[\s_-]?number|fastag[\s_-]?tag|fastag[\s_-]?tag[\s_-]?id|fastag[\s_-]?tag[\s_-]?number|tag[\s_-]?id|tag[\s_-]?number|tag[\s_-]?identifier|toll[\s_-]?tag|toll[\s_-]?tag[\s_-]?id|toll[\s_-]?tag[\s_-]?number|electronic[\s_-]?toll[\s_-]?tag|electronic[\s_-]?toll[\s_-]?tag[\s_-]?id|electronic[\s_-]?toll[\s_-]?tag[\s_-]?number)$`),
+				// High confidence - FASTag/toll-qualified column names (word-bounded).
+				// Bare "tag_id"/"tag_number"/"tag_identifier" moved to Medium below — generic tagging/RFID/metadata systems.
+				Regexp: regexp.MustCompile(`(?i)\b(fastag|fastag[\s_-]?id|fastag[\s_-]?identifier|fastag[\s_-]?number|fastag[\s_-]?num|fastag[\s_-]?no|fastag[\s_-]?code|fastag[\s_-]?account|fastag[\s_-]?account[\s_-]?number|fastag[\s_-]?account[\s_-]?id|fastag[\s_-]?wallet|fastag[\s_-]?wallet[\s_-]?id|fastag[\s_-]?wallet[\s_-]?number|fastag[\s_-]?customer|fastag[\s_-]?customer[\s_-]?id|fastag[\s_-]?customer[\s_-]?number|fastag[\s_-]?reference|fastag[\s_-]?reference[\s_-]?number|fastag[\s_-]?reference[\s_-]?id|fastag[\s_-]?serial|fastag[\s_-]?serial[\s_-]?number|fastag[\s_-]?tag|fastag[\s_-]?tag[\s_-]?id|fastag[\s_-]?tag[\s_-]?number|toll[\s_-]?tag|toll[\s_-]?tag[\s_-]?id|toll[\s_-]?tag[\s_-]?number|electronic[\s_-]?toll[\s_-]?tag|electronic[\s_-]?toll[\s_-]?tag[\s_-]?id|electronic[\s_-]?toll[\s_-]?tag[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common FASTag aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(fastag|fastag[\s_-]?id|fastag[\s_-]?identifier|fastag[\s_-]?number|fastag[\s_-]?num|fastag[\s_-]?no|fastag[\s_-]?account|fastag[\s_-]?wallet|fastag[\s_-]?customer|fastag[\s_-]?reference|fastag[\s_-]?serial|fastag[\s_-]?tag|toll[\s_-]?tag|electronic[\s_-]?toll[\s_-]?tag)\b`),
+				// Medium confidence - bare tag terms; ambiguous with generic tagging/RFID/metadata systems
+				Regexp: regexp.MustCompile(`(?i)\b(tag[\s_-]?id|tag[\s_-]?number|tag[\s_-]?identifier)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -718,15 +738,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_UPIID: {
 			{
-				// High confidence - exact UPI/VPA related column names
-				Regexp: regexp.MustCompile(`(?i)^(upi|upi[\s_-]?id|upi[\s_-]?identifier|upi[\s_-]?number|upi[\s_-]?handle|upi[\s_-]?address|upi[\s_-]?account|upi[\s_-]?account[\s_-]?id|upi[\s_-]?account[\s_-]?handle|upi[\s_-]?account[\s_-]?identifier|upi[\s_-]?vpa|vpa|vpa[\s_-]?id|vpa[\s_-]?identifier|vpa[\s_-]?handle|vpa[\s_-]?address|virtual[\s_-]?payment[\s_-]?address|virtual[\s_-]?payment[\s_-]?identifier|virtual[\s_-]?payment[\s_-]?id|payment[\s_-]?address|payment[\s_-]?handle|payment[\s_-]?vpa|bhim[\s_-]?upi|bhim[\s_-]?id|bhim[\s_-]?handle|merchant[\s_-]?upi|merchant[\s_-]?upi[\s_-]?id|merchant[\s_-]?vpa|payee[\s_-]?upi|payee[\s_-]?vpa|payer[\s_-]?upi|payer[\s_-]?vpa|receiver[\s_-]?upi|receiver[\s_-]?vpa|beneficiary[\s_-]?upi|beneficiary[\s_-]?vpa)$`),
+				// High confidence - UPI/VPA related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(upi|upi[\s_-]?id|upi[\s_-]?identifier|upi[\s_-]?number|upi[\s_-]?handle|upi[\s_-]?address|upi[\s_-]?account|upi[\s_-]?account[\s_-]?id|upi[\s_-]?account[\s_-]?handle|upi[\s_-]?account[\s_-]?identifier|upi[\s_-]?vpa|vpa|vpa[\s_-]?id|vpa[\s_-]?identifier|vpa[\s_-]?handle|vpa[\s_-]?address|virtual[\s_-]?payment[\s_-]?address|virtual[\s_-]?payment[\s_-]?identifier|virtual[\s_-]?payment[\s_-]?id|payment[\s_-]?address|payment[\s_-]?handle|payment[\s_-]?vpa|bhim[\s_-]?upi|bhim[\s_-]?id|bhim[\s_-]?handle|merchant[\s_-]?upi|merchant[\s_-]?upi[\s_-]?id|merchant[\s_-]?vpa|payee[\s_-]?upi|payee[\s_-]?vpa|payer[\s_-]?upi|payer[\s_-]?vpa|receiver[\s_-]?upi|receiver[\s_-]?vpa|beneficiary[\s_-]?upi|beneficiary[\s_-]?vpa)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common UPI aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(upi[\s_-]?id|upi[\s_-]?identifier|upi[\s_-]?handle|upi[\s_-]?address|upi[\s_-]?vpa|vpa|vpa[\s_-]?id|vpa[\s_-]?handle|virtual[\s_-]?payment[\s_-]?address|payment[\s_-]?address|payment[\s_-]?handle|payment[\s_-]?vpa|bhim[\s_-]?upi|merchant[\s_-]?upi|merchant[\s_-]?vpa|payee[\s_-]?upi|payer[\s_-]?upi|receiver[\s_-]?upi|beneficiary[\s_-]?upi)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -738,13 +752,15 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_CVV: {
 			{
-				// High confidence - exact CVV/CVC/CID/CVN/CSC related column names
-				Regexp: regexp.MustCompile(`(?i)^(cvv|cvv[\s_-]?code|cvv[\s_-]?number|cvv[\s_-]?value|cvv[\s_-]?id|cvc|cvc[\s_-]?code|cvc[\s_-]?number|cvc[\s_-]?value|cvc[\s_-]?id|cid|cid[\s_-]?code|cid[\s_-]?number|cid[\s_-]?value|cvn|cvn[\s_-]?code|cvn[\s_-]?number|cvn[\s_-]?value|csc|csc[\s_-]?code|csc[\s_-]?number|csc[\s_-]?value|card[\s_-]?cvv|card[\s_-]?cvc|card[\s_-]?cid|card[\s_-]?cvn|card[\s_-]?csc|card[\s_-]?verification[\s_-]?value|card[\s_-]?verification[\s_-]?code|card[\s_-]?security[\s_-]?code|card[\s_-]?security[\s_-]?value|card[\s_-]?validation[\s_-]?code|verification[\s_-]?value|verification[\s_-]?code|security[\s_-]?code|security[\s_-]?value|payment[\s_-]?card[\s_-]?cvv|payment[\s_-]?card[\s_-]?cvc|payment[\s_-]?card[\s_-]?security[\s_-]?code)$`),
+				// High confidence - card-qualified CVV/CVC/CVN column names (word-bounded).
+				// Bare "cid"/"csc" moved to Medium below in addition to the earlier verification/security-code demotion —
+				// "csc" collides with India's Common Service Centre scheme; "cid" collides with Customer/Case/Content ID.
+				Regexp: regexp.MustCompile(`(?i)\b(cvv|cvv[\s_-]?code|cvv[\s_-]?number|cvv[\s_-]?value|cvv[\s_-]?id|cvc|cvc[\s_-]?code|cvc[\s_-]?number|cvc[\s_-]?value|cvc[\s_-]?id|cvn|cvn[\s_-]?code|cvn[\s_-]?number|cvn[\s_-]?value|card[\s_-]?cvv|card[\s_-]?cvc|card[\s_-]?cid|card[\s_-]?cvn|card[\s_-]?csc|card[\s_-]?verification[\s_-]?value|card[\s_-]?verification[\s_-]?code|card[\s_-]?security[\s_-]?code|card[\s_-]?security[\s_-]?value|card[\s_-]?validation[\s_-]?code|payment[\s_-]?card[\s_-]?cvv|payment[\s_-]?card[\s_-]?cvc|payment[\s_-]?card[\s_-]?security[\s_-]?code)\b`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - common CVV aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(cvv|cvv[\s_-]?code|cvv[\s_-]?number|cvc|cvc[\s_-]?code|cid|cvn|csc|card[\s_-]?cvv|card[\s_-]?cvc|card[\s_-]?cid|card[\s_-]?cvn|card[\s_-]?csc|card[\s_-]?verification[\s_-]?code|card[\s_-]?security[\s_-]?code|card[\s_-]?security[\s_-]?value|verification[\s_-]?code|verification[\s_-]?value|security[\s_-]?code|security[\s_-]?value)\b`),
+				// Medium confidence - bare verification/security-code terms, plus bare "cid"/"csc"
+				Regexp: regexp.MustCompile(`(?i)\b(verification[\s_-]?value|verification[\s_-]?code|security[\s_-]?code|security[\s_-]?value|cid|csc)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -755,14 +771,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_TAN: {
 			{
-				// High confidence - exact TAN (Tax Deduction and Collection Account Number) related column names
-				Regexp: regexp.MustCompile(`(?i)^(tan|tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tax[\s_-]?account[\s_-]?number|tax[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)$`),
+				// High confidence - TAN column names qualified with a number/id/code suffix or a tax/TDS/TCS phrase.
+				// Bare "tan" and generic "tax_account"/"tax_account_number" moved to Medium below —
+				// "tan" collides with suntan and the trigonometric function; "tax_account" is generic ledger terminology.
+				Regexp: regexp.MustCompile(`(?i)\b(tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common TAN aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(tan|tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tds[\s_-]?tan|tcs[\s_-]?tan|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account[\s_-]?number|deductor[\s_-]?tan|collector[\s_-]?tan)\b`),
+				// Medium confidence - bare "tan" and generic tax-account terms
+				Regexp: regexp.MustCompile(`(?i)\b(tan|tax[\s_-]?account[\s_-]?number|tax[\s_-]?account)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -775,14 +793,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_CIN: {
 			{
-				// High confidence - exact Corporate Identification Number (CIN) related column names
-				Regexp: regexp.MustCompile(`(?i)^(cin|cin[\s_-]?number|cin[\s_-]?num|cin[\s_-]?no|cin[\s_-]?id|cin[\s_-]?identifier|cin[\s_-]?code|company[\s_-]?cin|company[\s_-]?cin[\s_-]?number|company[\s_-]?cin[\s_-]?id|company[\s_-]?identification[\s_-]?number|company[\s_-]?identification[\s_-]?code|corporate[\s_-]?identification[\s_-]?number|corporate[\s_-]?identification[\s_-]?code|corporate[\s_-]?identity[\s_-]?number|corporate[\s_-]?identity[\s_-]?code|corporate[\s_-]?registration[\s_-]?number|company[\s_-]?registration[\s_-]?number|mca[\s_-]?cin|mca[\s_-]?cin[\s_-]?number|roc[\s_-]?cin|roc[\s_-]?cin[\s_-]?number|incorporation[\s_-]?number|incorporation[\s_-]?id|company[\s_-]?incorporation[\s_-]?number)$`),
+				// High confidence - company/corporate-qualified CIN column names (word-bounded).
+				// Bare "cin"/"cin_number" etc moved to Medium below — could mean a generic "Customer ID Number"
+				// outside the corporate-registration context.
+				Regexp: regexp.MustCompile(`(?i)\b(company[\s_-]?cin|company[\s_-]?cin[\s_-]?number|company[\s_-]?cin[\s_-]?id|company[\s_-]?identification[\s_-]?number|company[\s_-]?identification[\s_-]?code|corporate[\s_-]?identification[\s_-]?number|corporate[\s_-]?identification[\s_-]?code|corporate[\s_-]?identity[\s_-]?number|corporate[\s_-]?identity[\s_-]?code|corporate[\s_-]?registration[\s_-]?number|company[\s_-]?registration[\s_-]?number|mca[\s_-]?cin|mca[\s_-]?cin[\s_-]?number|roc[\s_-]?cin|roc[\s_-]?cin[\s_-]?number|incorporation[\s_-]?number|incorporation[\s_-]?id|company[\s_-]?incorporation[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common CIN aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(cin|cin[\s_-]?number|cin[\s_-]?num|cin[\s_-]?no|company[\s_-]?cin|company[\s_-]?identification[\s_-]?number|corporate[\s_-]?identification[\s_-]?number|corporate[\s_-]?registration[\s_-]?number|company[\s_-]?registration[\s_-]?number|mca[\s_-]?cin|roc[\s_-]?cin|incorporation[\s_-]?number)\b`),
+				// Medium confidence - bare "cin" terms without a company/corporate qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(cin|cin[\s_-]?number|cin[\s_-]?num|cin[\s_-]?no|cin[\s_-]?id|cin[\s_-]?identifier|cin[\s_-]?code)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -795,15 +815,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_MICRCode: {
 			{
-				// High confidence - exact MICR related column names
-				Regexp: regexp.MustCompile(`(?i)^(micr|micr[\s_-]?code|micr[\s_-]?number|micr[\s_-]?num|micr[\s_-]?no|micr[\s_-]?id|micr[\s_-]?identifier|micr[\s_-]?value|micr[\s_-]?line|micr[\s_-]?line[\s_-]?code|micr[\s_-]?routing|bank[\s_-]?micr|bank[\s_-]?micr[\s_-]?code|branch[\s_-]?micr|branch[\s_-]?micr[\s_-]?code|cheque[\s_-]?micr|cheque[\s_-]?micr[\s_-]?code|check[\s_-]?micr|check[\s_-]?micr[\s_-]?code|account[\s_-]?micr|account[\s_-]?micr[\s_-]?code|micr[\s_-]?branch|micr[\s_-]?branch[\s_-]?code|micr[\s_-]?bank|micr[\s_-]?bank[\s_-]?code|magnetic[\s_-]?ink[\s_-]?character[\s_-]?recognition|magnetic[\s_-]?ink[\s_-]?character[\s_-]?recognition[\s_-]?code|magnetic[\s_-]?ink[\s_-]?code)$`),
+				// High confidence - MICR related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(micr|micr[\s_-]?code|micr[\s_-]?number|micr[\s_-]?num|micr[\s_-]?no|micr[\s_-]?id|micr[\s_-]?identifier|micr[\s_-]?value|micr[\s_-]?line|micr[\s_-]?line[\s_-]?code|micr[\s_-]?routing|bank[\s_-]?micr|bank[\s_-]?micr[\s_-]?code|branch[\s_-]?micr|branch[\s_-]?micr[\s_-]?code|cheque[\s_-]?micr|cheque[\s_-]?micr[\s_-]?code|check[\s_-]?micr|check[\s_-]?micr[\s_-]?code|account[\s_-]?micr|account[\s_-]?micr[\s_-]?code|micr[\s_-]?branch|micr[\s_-]?branch[\s_-]?code|micr[\s_-]?bank|micr[\s_-]?bank[\s_-]?code|magnetic[\s_-]?ink[\s_-]?character[\s_-]?recognition|magnetic[\s_-]?ink[\s_-]?character[\s_-]?recognition[\s_-]?code|magnetic[\s_-]?ink[\s_-]?code)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common MICR aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(micr|micr[\s_-]?code|micr[\s_-]?number|micr[\s_-]?num|micr[\s_-]?no|micr[\s_-]?line|bank[\s_-]?micr|branch[\s_-]?micr|cheque[\s_-]?micr|check[\s_-]?micr|account[\s_-]?micr|micr[\s_-]?branch|micr[\s_-]?bank|magnetic[\s_-]?ink[\s_-]?character[\s_-]?recognition)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -815,15 +829,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_GSTIN: {
 			{
-				// High confidence - exact GSTIN/GST registration related column names
-				Regexp: regexp.MustCompile(`(?i)^(gstin|gstin[\s_-]?number|gstin[\s_-]?num|gstin[\s_-]?no|gstin[\s_-]?id|gstin[\s_-]?identifier|gst[\s_-]?registration[\s_-]?number|gst[\s_-]?registration[\s_-]?id|gst[\s_-]?registration[\s_-]?code|gst[\s_-]?number|gst[\s_-]?no|gst[\s_-]?id|gst[\s_-]?identifier|gst[\s_-]?code|goods[\s_-]?and[\s_-]?services[\s_-]?tax[\s_-]?identification[\s_-]?number|goods[\s_-]?and[\s_-]?services[\s_-]?tax[\s_-]?registration[\s_-]?number|goods[\s_-]?services[\s_-]?tax[\s_-]?number|supplier[\s_-]?gstin|supplier[\s_-]?gst|vendor[\s_-]?gstin|vendor[\s_-]?gst|customer[\s_-]?gstin|customer[\s_-]?gst|business[\s_-]?gstin|business[\s_-]?gst|company[\s_-]?gstin|company[\s_-]?gst|dealer[\s_-]?gstin|dealer[\s_-]?gst|firm[\s_-]?gstin|firm[\s_-]?gst|entity[\s_-]?gstin|entity[\s_-]?gst)$`),
+				// High confidence - GSTIN related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(gstin|gstin[\s_-]?number|gstin[\s_-]?num|gstin[\s_-]?no|gstin[\s_-]?id|gstin[\s_-]?identifier|gst[\s_-]?registration[\s_-]?number|gst[\s_-]?registration[\s_-]?id|gst[\s_-]?registration[\s_-]?code|gst[\s_-]?number|gst[\s_-]?no|gst[\s_-]?id|gst[\s_-]?identifier|gst[\s_-]?code|goods[\s_-]?and[\s_-]?services[\s_-]?tax[\s_-]?identification[\s_-]?number|goods[\s_-]?and[\s_-]?services[\s_-]?tax[\s_-]?registration[\s_-]?number|goods[\s_-]?services[\s_-]?tax[\s_-]?number|supplier[\s_-]?gstin|supplier[\s_-]?gst|vendor[\s_-]?gstin|vendor[\s_-]?gst|customer[\s_-]?gstin|customer[\s_-]?gst|business[\s_-]?gstin|business[\s_-]?gst|company[\s_-]?gstin|company[\s_-]?gst|dealer[\s_-]?gstin|dealer[\s_-]?gst|firm[\s_-]?gstin|firm[\s_-]?gst|entity[\s_-]?gstin|entity[\s_-]?gst)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common GSTIN aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(gstin|gstin[\s_-]?number|gstin[\s_-]?num|gstin[\s_-]?no|gst[\s_-]?registration[\s_-]?number|gst[\s_-]?number|supplier[\s_-]?gstin|vendor[\s_-]?gstin|customer[\s_-]?gstin|business[\s_-]?gstin|company[\s_-]?gstin|dealer[\s_-]?gstin|firm[\s_-]?gstin|entity[\s_-]?gstin|goods[\s_-]?and[\s_-]?services[\s_-]?tax[\s_-]?registration[\s_-]?number)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -835,15 +843,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_AdharcardNumber: {
 			{
-				// High confidence - exact Aadhaar/UIDAI related column names
-				Regexp: regexp.MustCompile(`(?i)^(aadhaar|aadhaar[\s_-]?number|aadhaar[\s_-]?num|aadhaar[\s_-]?no|aadhaar[\s_-]?id|aadhaar[\s_-]?identifier|aadhaar[\s_-]?card|aadhaar[\s_-]?card[\s_-]?number|aadhaar[\s_-]?uid|aadhaar[\s_-]?uid[\s_-]?number|aadhar|aadhar[\s_-]?number|aadhar[\s_-]?num|aadhar[\s_-]?no|aadhar[\s_-]?id|aadhar[\s_-]?identifier|aadhar[\s_-]?card|aadhar[\s_-]?card[\s_-]?number|aadhar[\s_-]?uid|aadhar[\s_-]?uid[\s_-]?number|adhaar|adhaar[\s_-]?number|adhaar[\s_-]?num|adhaar[\s_-]?no|adhaar[\s_-]?card|adhar|adhar[\s_-]?number|adhar[\s_-]?num|adhar[\s_-]?no|uidai|uidai[\s_-]?number|uidai[\s_-]?id|uidai[\s_-]?identifier|unique[\s_-]?identification[\s_-]?number|unique[\s_-]?identification[\s_-]?id|unique[\s_-]?identity[\s_-]?number|resident[\s_-]?id|resident[\s_-]?identity[\s_-]?number|national[\s_-]?identity[\s_-]?number)$`),
+				// High confidence - Aadhaar related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(aadhaar|aadhaar[\s_-]?number|aadhaar[\s_-]?num|aadhaar[\s_-]?no|aadhaar[\s_-]?id|aadhaar[\s_-]?identifier|aadhaar[\s_-]?card|aadhaar[\s_-]?card[\s_-]?number|aadhaar[\s_-]?uid|aadhaar[\s_-]?uid[\s_-]?number|aadhar|aadhar[\s_-]?number|aadhar[\s_-]?num|aadhar[\s_-]?no|aadhar[\s_-]?id|aadhar[\s_-]?identifier|aadhar[\s_-]?card|aadhar[\s_-]?card[\s_-]?number|aadhar[\s_-]?uid|aadhar[\s_-]?uid[\s_-]?number|adhaar|adhaar[\s_-]?number|adhaar[\s_-]?num|adhaar[\s_-]?no|adhaar[\s_-]?card|adhar|adhar[\s_-]?number|adhar[\s_-]?num|adhar[\s_-]?no|uidai|uidai[\s_-]?number|uidai[\s_-]?id|uidai[\s_-]?identifier|unique[\s_-]?identification[\s_-]?number|unique[\s_-]?identification[\s_-]?id|unique[\s_-]?identity[\s_-]?number|resident[\s_-]?id|resident[\s_-]?identity[\s_-]?number|national[\s_-]?identity[\s_-]?number)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common Aadhaar aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(aadhaar|aadhaar[\s_-]?number|aadhaar[\s_-]?card|aadhaar[\s_-]?uid|aadhar|aadhar[\s_-]?number|aadhar[\s_-]?card|aadhar[\s_-]?uid|adhaar|adhar|uidai|unique[\s_-]?identification[\s_-]?number|unique[\s_-]?identity[\s_-]?number)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -855,14 +857,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_PassportNumber: {
 			{
-				// High confidence - exact Passport related column names
-				Regexp: regexp.MustCompile(`(?i)^(passport|passport[\s_-]?number|passport[\s_-]?num|passport[\s_-]?no|passport[\s_-]?id|passport[\s_-]?identifier|passport[\s_-]?code|passport[\s_-]?card|passport[\s_-]?document|passport[\s_-]?document[\s_-]?number|passport[\s_-]?book|passport[\s_-]?book[\s_-]?number|passport[\s_-]?serial|passport[\s_-]?serial[\s_-]?number|passport[\s_-]?details|passport[\s_-]?info|passport[\s_-]?information|passport[\s_-]?record|passport[\s_-]?reference|passport[\s_-]?reference[\s_-]?number|passport[\s_-]?identifier[\s_-]?number|travel[\s_-]?passport|travel[\s_-]?passport[\s_-]?number|travel[\s_-]?document|travel[\s_-]?document[\s_-]?number|international[\s_-]?passport|international[\s_-]?passport[\s_-]?number|foreign[\s_-]?passport|foreign[\s_-]?passport[\s_-]?number|citizen[\s_-]?passport|citizen[\s_-]?passport[\s_-]?number)$`),
+				// High confidence - Passport related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(passport|passport[\s_-]?number|passport[\s_-]?num|passport[\s_-]?no|passport[\s_-]?id|passport[\s_-]?identifier|passport[\s_-]?code|passport[\s_-]?card|passport[\s_-]?document|passport[\s_-]?document[\s_-]?number|passport[\s_-]?book|passport[\s_-]?book[\s_-]?number|passport[\s_-]?serial|passport[\s_-]?serial[\s_-]?number|passport[\s_-]?details|passport[\s_-]?info|passport[\s_-]?information|passport[\s_-]?record|passport[\s_-]?reference|passport[\s_-]?reference[\s_-]?number|passport[\s_-]?identifier[\s_-]?number|travel[\s_-]?passport|travel[\s_-]?passport[\s_-]?number|travel[\s_-]?document|travel[\s_-]?document[\s_-]?number|international[\s_-]?passport|international[\s_-]?passport[\s_-]?number|foreign[\s_-]?passport|foreign[\s_-]?passport[\s_-]?number|citizen[\s_-]?passport|citizen[\s_-]?passport[\s_-]?number)\b`),
 				Weight: 1.0,
-			},
-			{
-				// Medium confidence - common Passport aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(passport|passport[\s_-]?number|passport[\s_-]?num|passport[\s_-]?no|passport[\s_-]?document|passport[\s_-]?book|passport[\s_-]?serial|passport[\s_-]?reference|travel[\s_-]?passport|travel[\s_-]?document|international[\s_-]?passport|foreign[\s_-]?passport|citizen[\s_-]?passport)\b`),
-				Weight: 0.5,
 			},
 			{
 				// Low confidence - Passport specific fallback
@@ -872,15 +869,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_ABHANumber: {
 			{
-				// High confidence - exact ABHA/ABDM Health ID related column names
-				Regexp: regexp.MustCompile(`(?i)^(abha|abha[\s_-]?number|abha[\s_-]?num|abha[\s_-]?no|abha[\s_-]?id|abha[\s_-]?identifier|abha[\s_-]?address|abha[\s_-]?card|abha[\s_-]?card[\s_-]?number|abha[\s_-]?health[\s_-]?id|abha[\s_-]?health[\s_-]?identifier|health[\s_-]?id|health[\s_-]?identifier|health[\s_-]?identity|health[\s_-]?number|health[\s_-]?card[\s_-]?number|health[\s_-]?account|health[\s_-]?account[\s_-]?number|healthid|healthid[\s_-]?number|healthid[\s_-]?identifier|health[\s_-]?unique[\s_-]?id|health[\s_-]?unique[\s_-]?identifier|abdm|abdm[\s_-]?id|abdm[\s_-]?identifier|abdm[\s_-]?number|abdm[\s_-]?health[\s_-]?id|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account[\s_-]?number|ayushman[\s_-]?health[\s_-]?account|national[\s_-]?health[\s_-]?id|digital[\s_-]?health[\s_-]?id)$`),
+				// High confidence - ABHA/ABDM Health ID related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(abha|abha[\s_-]?number|abha[\s_-]?num|abha[\s_-]?no|abha[\s_-]?id|abha[\s_-]?identifier|abha[\s_-]?address|abha[\s_-]?card|abha[\s_-]?card[\s_-]?number|abha[\s_-]?health[\s_-]?id|abha[\s_-]?health[\s_-]?identifier|health[\s_-]?id|health[\s_-]?identifier|health[\s_-]?identity|health[\s_-]?number|health[\s_-]?card[\s_-]?number|health[\s_-]?account|health[\s_-]?account[\s_-]?number|healthid|healthid[\s_-]?number|healthid[\s_-]?identifier|health[\s_-]?unique[\s_-]?id|health[\s_-]?unique[\s_-]?identifier|abdm|abdm[\s_-]?id|abdm[\s_-]?identifier|abdm[\s_-]?number|abdm[\s_-]?health[\s_-]?id|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account[\s_-]?number|ayushman[\s_-]?health[\s_-]?account|national[\s_-]?health[\s_-]?id|digital[\s_-]?health[\s_-]?id)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common ABHA aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(abha|abha[\s_-]?number|abha[\s_-]?id|abha[\s_-]?health[\s_-]?id|health[\s_-]?id|health[\s_-]?identifier|healthid|health[\s_-]?account|health[\s_-]?unique[\s_-]?id|abdm|abdm[\s_-]?id|abdm[\s_-]?identifier|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account|ayushman[\s_-]?health[\s_-]?account|national[\s_-]?health[\s_-]?id|digital[\s_-]?health[\s_-]?id)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -892,15 +883,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_UAN: {
 			{
-				// High confidence - exact UAN (Universal Account Number) related column names
-				Regexp: regexp.MustCompile(`(?i)^(uan|uan[\s_-]?number|uan[\s_-]?num|uan[\s_-]?no|uan[\s_-]?id|uan[\s_-]?identifier|uan[\s_-]?code|universal[\s_-]?account[\s_-]?number|universal[\s_-]?account[\s_-]?id|universal[\s_-]?account[\s_-]?identifier|epf[\s_-]?uan|epf[\s_-]?uan[\s_-]?number|epfo[\s_-]?uan|epfo[\s_-]?uan[\s_-]?number|employee[\s_-]?uan|employee[\s_-]?uan[\s_-]?number|employee[\s_-]?pf[\s_-]?uan|employee[\s_-]?provident[\s_-]?fund[\s_-]?uan|provident[\s_-]?fund[\s_-]?uan|pf[\s_-]?uan|member[\s_-]?uan|member[\s_-]?uan[\s_-]?number|uan[\s_-]?member[\s_-]?id|uan[\s_-]?member[\s_-]?number)$`),
+				// High confidence - UAN related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(uan|uan[\s_-]?number|uan[\s_-]?num|uan[\s_-]?no|uan[\s_-]?id|uan[\s_-]?identifier|uan[\s_-]?code|universal[\s_-]?account[\s_-]?number|universal[\s_-]?account[\s_-]?id|universal[\s_-]?account[\s_-]?identifier|epf[\s_-]?uan|epf[\s_-]?uan[\s_-]?number|epfo[\s_-]?uan|epfo[\s_-]?uan[\s_-]?number|employee[\s_-]?uan|employee[\s_-]?uan[\s_-]?number|employee[\s_-]?pf[\s_-]?uan|employee[\s_-]?provident[\s_-]?fund[\s_-]?uan|provident[\s_-]?fund[\s_-]?uan|pf[\s_-]?uan|member[\s_-]?uan|member[\s_-]?uan[\s_-]?number|uan[\s_-]?member[\s_-]?id|uan[\s_-]?member[\s_-]?number)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common UAN aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(uan|uan[\s_-]?number|uan[\s_-]?num|uan[\s_-]?no|universal[\s_-]?account[\s_-]?number|epf[\s_-]?uan|epfo[\s_-]?uan|employee[\s_-]?uan|employee[\s_-]?pf[\s_-]?uan|employee[\s_-]?provident[\s_-]?fund[\s_-]?uan|provident[\s_-]?fund[\s_-]?uan|pf[\s_-]?uan|member[\s_-]?uan)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -912,15 +897,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_EPFMemberID: {
 			{
-				// High confidence - exact EPF Member ID related column names
-				Regexp: regexp.MustCompile(`(?i)^(epf[\s_-]?member|epf[\s_-]?member[\s_-]?id|epf[\s_-]?member[\s_-]?number|epf[\s_-]?member[\s_-]?no|epf[\s_-]?member[\s_-]?num|epf[\s_-]?member[\s_-]?identifier|epf[\s_-]?account|epf[\s_-]?account[\s_-]?number|epf[\s_-]?account[\s_-]?id|epf[\s_-]?account[\s_-]?identifier|epfo[\s_-]?member|epfo[\s_-]?member[\s_-]?id|epfo[\s_-]?member[\s_-]?number|pf[\s_-]?member|pf[\s_-]?member[\s_-]?id|pf[\s_-]?member[\s_-]?number|pf[\s_-]?account|pf[\s_-]?account[\s_-]?number|pf[\s_-]?account[\s_-]?id|provident[\s_-]?fund[\s_-]?member|provident[\s_-]?fund[\s_-]?member[\s_-]?id|provident[\s_-]?fund[\s_-]?member[\s_-]?number|provident[\s_-]?fund[\s_-]?account|provident[\s_-]?fund[\s_-]?account[\s_-]?number|employee[\s_-]?pf[\s_-]?member|employee[\s_-]?pf[\s_-]?member[\s_-]?id|employee[\s_-]?provident[\s_-]?fund[\s_-]?member|employee[\s_-]?provident[\s_-]?fund[\s_-]?member[\s_-]?id|member[\s_-]?pf[\s_-]?number|member[\s_-]?epf[\s_-]?number|pf[\s_-]?member[\s_-]?code|epf[\s_-]?member[\s_-]?code)$`),
+				// High confidence - EPF Member ID related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(epf[\s_-]?member|epf[\s_-]?member[\s_-]?id|epf[\s_-]?member[\s_-]?number|epf[\s_-]?member[\s_-]?no|epf[\s_-]?member[\s_-]?num|epf[\s_-]?member[\s_-]?identifier|epf[\s_-]?account|epf[\s_-]?account[\s_-]?number|epf[\s_-]?account[\s_-]?id|epf[\s_-]?account[\s_-]?identifier|epfo[\s_-]?member|epfo[\s_-]?member[\s_-]?id|epfo[\s_-]?member[\s_-]?number|pf[\s_-]?member|pf[\s_-]?member[\s_-]?id|pf[\s_-]?member[\s_-]?number|pf[\s_-]?account|pf[\s_-]?account[\s_-]?number|pf[\s_-]?account[\s_-]?id|provident[\s_-]?fund[\s_-]?member|provident[\s_-]?fund[\s_-]?member[\s_-]?id|provident[\s_-]?fund[\s_-]?member[\s_-]?number|provident[\s_-]?fund[\s_-]?account|provident[\s_-]?fund[\s_-]?account[\s_-]?number|employee[\s_-]?pf[\s_-]?member|employee[\s_-]?pf[\s_-]?member[\s_-]?id|employee[\s_-]?provident[\s_-]?fund[\s_-]?member|employee[\s_-]?provident[\s_-]?fund[\s_-]?member[\s_-]?id|member[\s_-]?pf[\s_-]?number|member[\s_-]?epf[\s_-]?number|pf[\s_-]?member[\s_-]?code|epf[\s_-]?member[\s_-]?code)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common EPF Member ID aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(epf[\s_-]?member|epf[\s_-]?member[\s_-]?id|epf[\s_-]?account[\s_-]?number|epfo[\s_-]?member|epfo[\s_-]?member[\s_-]?id|pf[\s_-]?member|pf[\s_-]?member[\s_-]?id|pf[\s_-]?account[\s_-]?number|provident[\s_-]?fund[\s_-]?member|provident[\s_-]?fund[\s_-]?account|employee[\s_-]?pf[\s_-]?member|employee[\s_-]?provident[\s_-]?fund[\s_-]?member|member[\s_-]?pf[\s_-]?number|member[\s_-]?epf[\s_-]?number)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -932,14 +911,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_VoterID: {
 			{
-				// High confidence - exact Voter ID / EPIC related column names
-				Regexp: regexp.MustCompile(`(?i)^(voter|voter[\s_-]?id|voter[\s_-]?number|voter[\s_-]?num|voter[\s_-]?no|voter[\s_-]?identifier|voter[\s_-]?card|voter[\s_-]?card[\s_-]?number|voter[\s_-]?identity[\s_-]?card|voter[\s_-]?identity[\s_-]?number|voter[\s_-]?registration[\s_-]?number|voter[\s_-]?registration[\s_-]?id|voter[\s_-]?serial[\s_-]?number|elector[\s_-]?id|elector[\s_-]?number|elector[\s_-]?identifier|elector[\s_-]?card|elector[\s_-]?card[\s_-]?number|elector[\s_-]?photo[\s_-]?identity[\s_-]?card|electoral[\s_-]?id|electoral[\s_-]?number|electoral[\s_-]?identifier|electoral[\s_-]?card|electoral[\s_-]?photo[\s_-]?identity[\s_-]?card|epic|epic[\s_-]?id|epic[\s_-]?number|epic[\s_-]?num|epic[\s_-]?no|epic[\s_-]?identifier|epic[\s_-]?card|epic[\s_-]?card[\s_-]?number|electors[\s_-]?photo[\s_-]?identity[\s_-]?card|electors[\s_-]?photo[\s_-]?id|electors[\s_-]?photo[\s_-]?card)$`),
+				// High confidence - voter/electoral-qualified column names (word-bounded).
+				// Bare "epic"/"epic_id" etc moved to Medium below — "epic" is extremely common in agile/Jira
+				// tooling ("epic_id", "epic_key") and everyday usage ("epic fail"), unrelated to Voter ID.
+				Regexp: regexp.MustCompile(`(?i)\b(voter|voter[\s_-]?id|voter[\s_-]?number|voter[\s_-]?num|voter[\s_-]?no|voter[\s_-]?identifier|voter[\s_-]?card|voter[\s_-]?card[\s_-]?number|voter[\s_-]?identity[\s_-]?card|voter[\s_-]?identity[\s_-]?number|voter[\s_-]?registration[\s_-]?number|voter[\s_-]?registration[\s_-]?id|voter[\s_-]?serial[\s_-]?number|elector[\s_-]?id|elector[\s_-]?number|elector[\s_-]?identifier|elector[\s_-]?card|elector[\s_-]?card[\s_-]?number|elector[\s_-]?photo[\s_-]?identity[\s_-]?card|electoral[\s_-]?id|electoral[\s_-]?number|electoral[\s_-]?identifier|electoral[\s_-]?card|electoral[\s_-]?photo[\s_-]?identity[\s_-]?card|electors[\s_-]?photo[\s_-]?identity[\s_-]?card|electors[\s_-]?photo[\s_-]?id|electors[\s_-]?photo[\s_-]?card)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common Voter ID aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(voter[\s_-]?id|voter[\s_-]?number|voter[\s_-]?card|voter[\s_-]?identity[\s_-]?card|elector[\s_-]?id|elector[\s_-]?card|electoral[\s_-]?id|electoral[\s_-]?card|epic|epic[\s_-]?id|epic[\s_-]?number|electors[\s_-]?photo[\s_-]?identity[\s_-]?card)\b`),
+				// Medium confidence - bare "epic" terms; collides with agile/Jira "epic" and colloquial usage
+				Regexp: regexp.MustCompile(`(?i)\b(epic|epic[\s_-]?id|epic[\s_-]?number|epic[\s_-]?num|epic[\s_-]?no|epic[\s_-]?identifier|epic[\s_-]?card|epic[\s_-]?card[\s_-]?number)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -952,15 +933,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_IFSC: {
 			{
-				// High confidence - exact IFSC related column names
-				Regexp: regexp.MustCompile(`(?i)^(ifsc|ifsc[\s_-]?code|ifsc[\s_-]?number|ifsc[\s_-]?num|ifsc[\s_-]?no|ifsc[\s_-]?id|ifsc[\s_-]?identifier|ifsc[\s_-]?value|bank[\s_-]?ifsc|bank[\s_-]?ifsc[\s_-]?code|branch[\s_-]?ifsc|branch[\s_-]?ifsc[\s_-]?code|beneficiary[\s_-]?ifsc|beneficiary[\s_-]?ifsc[\s_-]?code|receiver[\s_-]?ifsc|receiver[\s_-]?ifsc[\s_-]?code|payer[\s_-]?ifsc|payer[\s_-]?ifsc[\s_-]?code|payee[\s_-]?ifsc|payee[\s_-]?ifsc[\s_-]?code|customer[\s_-]?ifsc|customer[\s_-]?ifsc[\s_-]?code|account[\s_-]?ifsc|account[\s_-]?ifsc[\s_-]?code|bank[\s_-]?branch[\s_-]?ifsc|bank[\s_-]?branch[\s_-]?code|indian[\s_-]?financial[\s_-]?system[\s_-]?code)$`),
+				// High confidence - IFSC related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(ifsc|ifsc[\s_-]?code|ifsc[\s_-]?number|ifsc[\s_-]?num|ifsc[\s_-]?no|ifsc[\s_-]?id|ifsc[\s_-]?identifier|ifsc[\s_-]?value|bank[\s_-]?ifsc|bank[\s_-]?ifsc[\s_-]?code|branch[\s_-]?ifsc|branch[\s_-]?ifsc[\s_-]?code|beneficiary[\s_-]?ifsc|beneficiary[\s_-]?ifsc[\s_-]?code|receiver[\s_-]?ifsc|receiver[\s_-]?ifsc[\s_-]?code|payer[\s_-]?ifsc|payer[\s_-]?ifsc[\s_-]?code|payee[\s_-]?ifsc|payee[\s_-]?ifsc[\s_-]?code|customer[\s_-]?ifsc|customer[\s_-]?ifsc[\s_-]?code|account[\s_-]?ifsc|account[\s_-]?ifsc[\s_-]?code|bank[\s_-]?branch[\s_-]?ifsc|bank[\s_-]?branch[\s_-]?code|indian[\s_-]?financial[\s_-]?system[\s_-]?code)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common IFSC aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(ifsc|ifsc[\s_-]?code|ifsc[\s_-]?number|bank[\s_-]?ifsc|branch[\s_-]?ifsc|beneficiary[\s_-]?ifsc|receiver[\s_-]?ifsc|payer[\s_-]?ifsc|payee[\s_-]?ifsc|customer[\s_-]?ifsc|account[\s_-]?ifsc|bank[\s_-]?branch[\s_-]?ifsc|indian[\s_-]?financial[\s_-]?system[\s_-]?code)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -972,35 +947,24 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_ESIC: {
 			{
-				// High confidence - exact ESIC / ESI Insurance Number related column names
-				Regexp: regexp.MustCompile(`(?i)^(esic|esic[\s_-]?number|esic[\s_-]?num|esic[\s_-]?no|esic[\s_-]?id|esic[\s_-]?identifier|esic[\s_-]?code|esic[\s_-]?insurance[\s_-]?number|esic[\s_-]?insurance[\s_-]?id|esic[\s_-]?member[\s_-]?id|esic[\s_-]?member[\s_-]?number|esic[\s_-]?registration[\s_-]?number|esic[\s_-]?registration[\s_-]?id|esi|esi[\s_-]?number|esi[\s_-]?num|esi[\s_-]?no|esi[\s_-]?id|esi[\s_-]?identifier|esi[\s_-]?insurance[\s_-]?number|esi[\s_-]?member[\s_-]?id|esi[\s_-]?member[\s_-]?number|employee[\s_-]?state[\s_-]?insurance|employee[\s_-]?state[\s_-]?insurance[\s_-]?number|employee[\s_-]?state[\s_-]?insurance[\s_-]?id|employee[\s_-]?insurance[\s_-]?number|insured[\s_-]?person[\s_-]?number|insured[\s_-]?person[\s_-]?id|ip[\s_-]?number|ip[\s_-]?id|insurance[\s_-]?number[\s_-]?esic|insurance[\s_-]?id[\s_-]?esic)$`),
+				// High confidence - ESIC related column names (word-bounded).
+				// "ip_number"/"ip_id" intentionally excluded — collides with IPAddress; see Low tier below.
+				Regexp: regexp.MustCompile(`(?i)\b(esic|esic[\s_-]?number|esic[\s_-]?num|esic[\s_-]?no|esic[\s_-]?id|esic[\s_-]?identifier|esic[\s_-]?code|esic[\s_-]?insurance[\s_-]?number|esic[\s_-]?insurance[\s_-]?id|esic[\s_-]?member[\s_-]?id|esic[\s_-]?member[\s_-]?number|esic[\s_-]?registration[\s_-]?number|esic[\s_-]?registration[\s_-]?id|esi|esi[\s_-]?number|esi[\s_-]?num|esi[\s_-]?no|esi[\s_-]?id|esi[\s_-]?identifier|esi[\s_-]?insurance[\s_-]?number|esi[\s_-]?member[\s_-]?id|esi[\s_-]?member[\s_-]?number|employee[\s_-]?state[\s_-]?insurance|employee[\s_-]?state[\s_-]?insurance[\s_-]?number|employee[\s_-]?state[\s_-]?insurance[\s_-]?id|employee[\s_-]?insurance[\s_-]?number|insured[\s_-]?person[\s_-]?number|insured[\s_-]?person[\s_-]?id|insurance[\s_-]?number[\s_-]?esic|insurance[\s_-]?id[\s_-]?esic)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
-				// Medium confidence - common ESIC aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(esic|esic[\s_-]?number|esic[\s_-]?id|esic[\s_-]?member[\s_-]?id|esic[\s_-]?registration[\s_-]?number|esi[\s_-]?number|esi[\s_-]?id|employee[\s_-]?state[\s_-]?insurance|employee[\s_-]?insurance[\s_-]?number|insured[\s_-]?person[\s_-]?number|ip[\s_-]?number)\b`),
-				Weight: 0.5,
-				Region: RegionIndia,
-			},
-			{
-				// Low confidence - ESIC specific fallback
-				Regexp: regexp.MustCompile(`(?i)^.*(esic|esi[\s_-]?number|esic[\s_-]?member|employee[\s_-]?state[\s_-]?insurance|insured[\s_-]?person[\s_-]?number).*$`),
+				// Low confidence - ESIC specific fallback; also home for the ambiguous "ip_number"/"ip_id" alias
+				Regexp: regexp.MustCompile(`(?i)^.*(esic|esi[\s_-]?number|esic[\s_-]?member|employee[\s_-]?state[\s_-]?insurance|insured[\s_-]?person[\s_-]?number|insured[\s_-]?person[\s_-]?id|ip[\s_-]?number|ip[\s_-]?id).*$`),
 				Weight: 0.3,
 				Region: RegionIndia,
 			},
 		},
 		PIILabel_RationCard: {
 			{
-				// High confidence - exact Ration Card related column names
-				Regexp: regexp.MustCompile(`(?i)^(ration[\s_-]?card|ration[\s_-]?card[\s_-]?number|ration[\s_-]?card[\s_-]?num|ration[\s_-]?card[\s_-]?no|ration[\s_-]?card[\s_-]?id|ration[\s_-]?card[\s_-]?identifier|ration[\s_-]?card[\s_-]?code|ration[\s_-]?number|ration[\s_-]?num|ration[\s_-]?no|ration[\s_-]?id|ration[\s_-]?identifier|ration[\s_-]?book|ration[\s_-]?book[\s_-]?number|ration[\s_-]?book[\s_-]?id|family[\s_-]?ration[\s_-]?card|family[\s_-]?ration[\s_-]?number|food[\s_-]?security[\s_-]?card|food[\s_-]?security[\s_-]?card[\s_-]?number|food[\s_-]?card|food[\s_-]?card[\s_-]?number|public[\s_-]?distribution[\s_-]?system[\s_-]?card|public[\s_-]?distribution[\s_-]?system[\s_-]?number|pds[\s_-]?card|pds[\s_-]?card[\s_-]?number|nfsa[\s_-]?card|nfsa[\s_-]?card[\s_-]?number|smart[\s_-]?ration[\s_-]?card|smart[\s_-]?ration[\s_-]?card[\s_-]?number|household[\s_-]?ration[\s_-]?card|household[\s_-]?ration[\s_-]?number|family[\s_-]?food[\s_-]?card)$`),
+				// High confidence - Ration Card related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(ration[\s_-]?card|ration[\s_-]?card[\s_-]?number|ration[\s_-]?card[\s_-]?num|ration[\s_-]?card[\s_-]?no|ration[\s_-]?card[\s_-]?id|ration[\s_-]?card[\s_-]?identifier|ration[\s_-]?card[\s_-]?code|ration[\s_-]?number|ration[\s_-]?num|ration[\s_-]?no|ration[\s_-]?id|ration[\s_-]?identifier|ration[\s_-]?book|ration[\s_-]?book[\s_-]?number|ration[\s_-]?book[\s_-]?id|family[\s_-]?ration[\s_-]?card|family[\s_-]?ration[\s_-]?number|food[\s_-]?security[\s_-]?card|food[\s_-]?security[\s_-]?card[\s_-]?number|food[\s_-]?card|food[\s_-]?card[\s_-]?number|public[\s_-]?distribution[\s_-]?system[\s_-]?card|public[\s_-]?distribution[\s_-]?system[\s_-]?number|pds[\s_-]?card|pds[\s_-]?card[\s_-]?number|nfsa[\s_-]?card|nfsa[\s_-]?card[\s_-]?number|smart[\s_-]?ration[\s_-]?card|smart[\s_-]?ration[\s_-]?card[\s_-]?number|household[\s_-]?ration[\s_-]?card|household[\s_-]?ration[\s_-]?number|family[\s_-]?food[\s_-]?card)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common Ration Card aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(ration[\s_-]?card|ration[\s_-]?card[\s_-]?number|ration[\s_-]?number|ration[\s_-]?book|family[\s_-]?ration[\s_-]?card|food[\s_-]?security[\s_-]?card|food[\s_-]?card|public[\s_-]?distribution[\s_-]?system[\s_-]?card|pds[\s_-]?card|nfsa[\s_-]?card|smart[\s_-]?ration[\s_-]?card|household[\s_-]?ration[\s_-]?card|family[\s_-]?food[\s_-]?card)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -1012,15 +976,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_SEBIRegistration: {
 			{
-				// High confidence - exact SEBI Registration related column names
-				Regexp: regexp.MustCompile(`(?i)^(sebi|sebi[\s_-]?registration|sebi[\s_-]?registration[\s_-]?number|sebi[\s_-]?registration[\s_-]?num|sebi[\s_-]?registration[\s_-]?no|sebi[\s_-]?registration[\s_-]?id|sebi[\s_-]?registration[\s_-]?identifier|sebi[\s_-]?registration[\s_-]?code|sebi[\s_-]?reg|sebi[\s_-]?reg[\s_-]?number|sebi[\s_-]?reg[\s_-]?no|sebi[\s_-]?reg[\s_-]?id|sebi[\s_-]?certificate|sebi[\s_-]?certificate[\s_-]?number|sebi[\s_-]?certificate[\s_-]?id|sebi[\s_-]?license|sebi[\s_-]?license[\s_-]?number|sebi[\s_-]?approval[\s_-]?number|sebi[\s_-]?approval[\s_-]?id|sebi[\s_-]?member[\s_-]?id|sebi[\s_-]?member[\s_-]?number|broker[\s_-]?sebi[\s_-]?registration|broker[\s_-]?sebi[\s_-]?registration[\s_-]?number|stock[\s_-]?broker[\s_-]?sebi[\s_-]?registration|investment[\s_-]?advisor[\s_-]?sebi[\s_-]?registration|investment[\s_-]?adviser[\s_-]?sebi[\s_-]?registration|merchant[\s_-]?banker[\s_-]?sebi[\s_-]?registration|portfolio[\s_-]?manager[\s_-]?sebi[\s_-]?registration|research[\s_-]?analyst[\s_-]?sebi[\s_-]?registration|mutual[\s_-]?fund[\s_-]?sebi[\s_-]?registration|depository[\s_-]?participant[\s_-]?sebi[\s_-]?registration)$`),
+				// High confidence - SEBI Registration related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(sebi|sebi[\s_-]?registration|sebi[\s_-]?registration[\s_-]?number|sebi[\s_-]?registration[\s_-]?num|sebi[\s_-]?registration[\s_-]?no|sebi[\s_-]?registration[\s_-]?id|sebi[\s_-]?registration[\s_-]?identifier|sebi[\s_-]?registration[\s_-]?code|sebi[\s_-]?reg|sebi[\s_-]?reg[\s_-]?number|sebi[\s_-]?reg[\s_-]?no|sebi[\s_-]?reg[\s_-]?id|sebi[\s_-]?certificate|sebi[\s_-]?certificate[\s_-]?number|sebi[\s_-]?certificate[\s_-]?id|sebi[\s_-]?license|sebi[\s_-]?license[\s_-]?number|sebi[\s_-]?approval[\s_-]?number|sebi[\s_-]?approval[\s_-]?id|sebi[\s_-]?member[\s_-]?id|sebi[\s_-]?member[\s_-]?number|broker[\s_-]?sebi[\s_-]?registration|broker[\s_-]?sebi[\s_-]?registration[\s_-]?number|stock[\s_-]?broker[\s_-]?sebi[\s_-]?registration|investment[\s_-]?advisor[\s_-]?sebi[\s_-]?registration|investment[\s_-]?adviser[\s_-]?sebi[\s_-]?registration|merchant[\s_-]?banker[\s_-]?sebi[\s_-]?registration|portfolio[\s_-]?manager[\s_-]?sebi[\s_-]?registration|research[\s_-]?analyst[\s_-]?sebi[\s_-]?registration|mutual[\s_-]?fund[\s_-]?sebi[\s_-]?registration|depository[\s_-]?participant[\s_-]?sebi[\s_-]?registration)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common SEBI Registration aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(sebi[\s_-]?registration|sebi[\s_-]?registration[\s_-]?number|sebi[\s_-]?reg|sebi[\s_-]?certificate|sebi[\s_-]?license|sebi[\s_-]?approval[\s_-]?number|broker[\s_-]?sebi[\s_-]?registration|stock[\s_-]?broker[\s_-]?sebi[\s_-]?registration|investment[\s_-]?advisor[\s_-]?sebi[\s_-]?registration|investment[\s_-]?adviser[\s_-]?sebi[\s_-]?registration|merchant[\s_-]?banker[\s_-]?sebi[\s_-]?registration|portfolio[\s_-]?manager[\s_-]?sebi[\s_-]?registration|research[\s_-]?analyst[\s_-]?sebi[\s_-]?registration|mutual[\s_-]?fund[\s_-]?sebi[\s_-]?registration|depository[\s_-]?participant[\s_-]?sebi[\s_-]?registration)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{
@@ -1032,15 +990,9 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_VehicleNumber: {
 			{
-				// High confidence - exact Vehicle Registration Number / Number Plate column names
-				Regexp: regexp.MustCompile(`(?i)^(vehicle[\s_-]?number|vehicle[\s_-]?no|vehicle[\s_-]?num|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?registration[\s_-]?no|vehicle[\s_-]?registration[\s_-]?num|vehicle[\s_-]?registration[\s_-]?id|vehicle[\s_-]?registration[\s_-]?mark|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|vehicle[\s_-]?reg[\s_-]?no|vehicle[\s_-]?reg[\s_-]?num|registration[\s_-]?mark|registration[\s_-]?mark[\s_-]?number|registration[\s_-]?plate|registration[\s_-]?plate[\s_-]?number|number[\s_-]?plate|number[\s_-]?plate[\s_-]?number|license[\s_-]?plate|license[\s_-]?plate[\s_-]?number|licence[\s_-]?plate|licence[\s_-]?plate[\s_-]?number|vehicle[\s_-]?plate|vehicle[\s_-]?plate[\s_-]?number|plate[\s_-]?number|motor[\s_-]?vehicle[\s_-]?number|motor[\s_-]?vehicle[\s_-]?registration|motor[\s_-]?vehicle[\s_-]?registration[\s_-]?number|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration[\s_-]?number|transport[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration[\s_-]?number|vrn|vehicle[\s_-]?vrn)$`),
+				// High confidence - Vehicle Registration Number related column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(vehicle[\s_-]?number|vehicle[\s_-]?no|vehicle[\s_-]?num|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?registration[\s_-]?no|vehicle[\s_-]?registration[\s_-]?num|vehicle[\s_-]?registration[\s_-]?id|vehicle[\s_-]?registration[\s_-]?mark|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|vehicle[\s_-]?reg[\s_-]?no|vehicle[\s_-]?reg[\s_-]?num|registration[\s_-]?mark|registration[\s_-]?mark[\s_-]?number|registration[\s_-]?plate|registration[\s_-]?plate[\s_-]?number|number[\s_-]?plate|number[\s_-]?plate[\s_-]?number|license[\s_-]?plate|license[\s_-]?plate[\s_-]?number|licence[\s_-]?plate|licence[\s_-]?plate[\s_-]?number|vehicle[\s_-]?plate|vehicle[\s_-]?plate[\s_-]?number|plate[\s_-]?number|motor[\s_-]?vehicle[\s_-]?number|motor[\s_-]?vehicle[\s_-]?registration|motor[\s_-]?vehicle[\s_-]?registration[\s_-]?number|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration[\s_-]?number|transport[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration[\s_-]?number|vrn|vehicle[\s_-]?vrn)\b`),
 				Weight: 1.0,
-				Region: RegionIndia,
-			},
-			{
-				// Medium confidence - common Vehicle Registration Number aliases appearing within column names
-				Regexp: regexp.MustCompile(`(?i)\b(vehicle[\s_-]?number|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|registration[\s_-]?mark|registration[\s_-]?plate|number[\s_-]?plate|license[\s_-]?plate|licence[\s_-]?plate|vehicle[\s_-]?plate|motor[\s_-]?vehicle[\s_-]?registration|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration|vrn|vehicle[\s_-]?vrn)\b`),
-				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{

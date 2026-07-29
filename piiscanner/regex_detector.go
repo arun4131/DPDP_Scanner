@@ -1227,9 +1227,10 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_TAN: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{4}[0-9]{5}[A-Z]\b`),
-				Weight: 0.9,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{4}[0-9]{5}[A-Z]\b`),
+				Weight:                0.9,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_CIN: {
@@ -1248,9 +1249,10 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// New Sarathi format: state(2) + district(2) + serial(11) = 15 chars
-				Regexp: regexp.MustCompile(`(?i)\b((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?[0-9]{11})\b`),
-				Weight: 0.9,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)\b((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?[0-9]{11})\b`),
+				Weight:                0.9,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_Gender: {
@@ -1319,9 +1321,10 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_VoterID: {
 			{
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{3}\d{7}\b`),
-				Weight: 0.8,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{3}\d{7}\b`),
+				Weight:                0.8,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_IFSC: {
@@ -1344,15 +1347,17 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_PassportNumber: {
 			{
 				// 1 letter + 7 digits
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z][0-9]{7}\b`),
-				Weight: 1.0,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)\b[A-Z][0-9]{7}\b`),
+				Weight:                1.0,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 			{
 				// 2 letters + 6 digits
-				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[0-9]{6}\b`),
-				Weight: 1.0,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{2}[0-9]{6}\b`),
+				Weight:                1.0,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_ABHANumber: {

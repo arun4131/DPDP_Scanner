@@ -489,6 +489,10 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 							PIILabel_Phone:                 true,
 							PIILabel_MICRCode:              true,
 							PIILabel_UAN:                   true,
+							PIILabel_VoterID:               true,
+							PIILabel_PassportNumber:        true,
+							PIILabel_TAN:                   true,
+							PIILabel_DrivingLicenceNumber:  true,
 						}
 
 						labelHits := make(map[PIILabel]int)
@@ -507,6 +511,10 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 							if hits > 0 {
 								// Average weight over sampled values
 								avgWeight := labelWeights[lbl] / float64(totalSamples)
+								// Phase 2: column name unrecognized → cap at Medium 🟡 (never High 🔴)
+								if avgWeight >= 0.70 {
+									avgWeight = 0.69
+								}
 								piiDataWithWeight := NewPIIDataWithWeightString(lbl, avgWeight, DetectorType_ValueDetector, "regex")
 								piiDataWithWeight.SetScanedValueAndMatchCount(hits, totalSamples)
 								output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)

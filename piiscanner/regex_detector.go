@@ -1097,7 +1097,7 @@ func (r *regexValueDetector) Init() error {
 				// India: safe lengths - no collision with phone/aadhaar/card
 				// includes 9-digit as Indian bank accounts use 9 digits
 				// RequiresColumnContext to avoid collision with MICR (9-digit) and CIF (8-11 digit)
-				Regexp:                regexp.MustCompile(`^\d{9,18}$`),
+				Regexp:                regexp.MustCompile(`^(?:\d[\s\-]?){9,18}$`),
 				Weight:                0.6,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,

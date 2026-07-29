@@ -1179,7 +1179,7 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				Regexp:                regexp.MustCompile(`(?i)\b\d{8,11}\b`),
-				Weight:                0.3,
+				Weight:                0.6,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
 			},
@@ -1188,7 +1188,7 @@ func (r *regexValueDetector) Init() error {
 			{
 				// Indian loan account numbers (bank specific)
 				Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_/]{8,25}[A-Za-z0-9]\b`),
-				Weight:                0.3,
+				Weight:                0.6,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
 			},
@@ -1197,7 +1197,7 @@ func (r *regexValueDetector) Init() error {
 			{
 				// Indian insurance policy numbers (insurer specific)
 				Regexp:                regexp.MustCompile(`\b[A-Za-z0-9][A-Za-z0-9\-_]{6,25}[A-Za-z0-9]\b`),
-				Weight:                0.3,
+				Weight:                0.6,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
 			},
@@ -1206,7 +1206,7 @@ func (r *regexValueDetector) Init() error {
 			{
 				// FASTag identifiers are issuer-specific.
 				Regexp:                regexp.MustCompile(`(?i)\b[A-Z0-9]{10,24}\b`),
-				Weight:                0.3,
+				Weight:                0.6,
 				Region:                RegionIndia,
 				RequiresColumnContext: true,
 			},

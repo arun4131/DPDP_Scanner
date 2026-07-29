@@ -1446,8 +1446,8 @@ func (r *regexValueDetector) Init() error {
 				Weight: 0.95,
 			},
 			{
-				// JWT (JSON Web Token) - standard 3-part base64 header.payload.signature
-				Regexp: regexp.MustCompile(`\beyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b`),
+				// JWT (JSON Web Token) - 3-part base64 header.payload.signature
+				Regexp: regexp.MustCompile(`\beyJ[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-=]{10,}\.[a-zA-Z0-9_\-\.=]{3,}\b`),
 				Weight: 0.90,
 			},
 		},

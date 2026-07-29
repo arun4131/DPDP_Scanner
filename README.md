@@ -142,7 +142,7 @@ The first time you run a scan, just use the plain `./dpdpascanner` command with 
 | `--include-table` | *(all tables)* | Comma-separated list of tables to scan. Every other table is skipped. |
 | `--print-all` | `false` | By default the terminal only shows High-confidence findings. Add this flag to also print Medium and Low confidence findings. |
 | `--print-summary` | `false` | Print a short, condensed summary instead of the full results table. |
-
+| `--no-timeout` | `false` | To disable timeout after 5 minutes. Useful when running deepscan on large database |
 ---
 
 ## Default Behavior (no `--piiscanner` flag)

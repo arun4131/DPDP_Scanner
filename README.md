@@ -19,7 +19,7 @@ After every scan you get:
 - **Log files** — `kshield_pii_highconfidence.log` and `kshield_pii_lowconfidence.log` — the full, unabridged results for every confidence level
 - **Multi-instance support** — scan multiple PostgreSQL servers and multiple databases per server in a single run
 
-Note: HTML report and Log files are overwritten each time after scanning a database. At the end, they consist of results of the last scanned database.
+> **Note:** The HTML report (and both log files) are overwritten every time a scan runs. If your config scans multiple databases in one run, the report will only contain the **last** database scanned. Use `--database yourdb` to scan one database at a time and keep a separate report per database.
 
 The scanner works two ways at once on every table:
 

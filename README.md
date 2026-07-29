@@ -14,10 +14,11 @@ You don't need to know Go or SQL to use this tool. Just follow the steps below i
 
 After every scan you get:
 
-- **Terminal output** — a clean summary showing High-confidence findings for the database you just scanned
-- **HTML report** — `kshield_pii_report.html` — a visual report with tabs for High and Low/Medium confidence findings, pagination, and colour-coded labels. Open it by double-clicking the file.
+- **Terminal output** — a clean summary showing High-confidence findings for the databases you scanned
+- **HTML report** — `kshield_pii_report.html` — a visual report with tabs for High and Low/Medium confidence findings, pagination, and colour-coded labels. Open it by double-clicking the file. 
 - **Log files** — `kshield_pii_highconfidence.log` and `kshield_pii_lowconfidence.log` — the full, unabridged results for every confidence level
 - **Multi-instance support** — scan multiple PostgreSQL servers and multiple databases per server in a single run
+Note: HTML report and Log files are overwritten each time after scanning a database. At the end, they consist of results of the last scanned database.
 
 The scanner works two ways at once on every table:
 

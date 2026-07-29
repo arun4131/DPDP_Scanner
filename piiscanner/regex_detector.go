@@ -415,20 +415,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_Address: {
 			{
-				// High confidence - unambiguous address-specific column names (word-bounded).
-				// Additional single-word terms demoted below: drive/court/place/route/house/flat/suite/plot/circle/lane
-				// (each collides with a common non-address meaning), plus the abbreviations ave/dr/ct/pl/sq/cir and square.
-				Regexp: regexp.MustCompile(`(?i)\b(address|address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|address[\s_-]?line[\s_-]?3|address[\s_-]?1|address[\s_-]?2|address[\s_-]?3|addr|addr[\s_-]?line[\s_-]?1|addr[\s_-]?line[\s_-]?2|street|street[\s_-]?address|street[\s_-]?name|road|road[\s_-]?name|avenue|boulevard|blvd|highway|hwy|sub[\s_-]?district|country|nation|building|building[\s_-]?name|house[\s_-]?number|house[\s_-]?no|flat[\s_-]?number|flat[\s_-]?no|apartment|apartment[\s_-]?number|apt|unit[\s_-]?number|door[\s_-]?number|door[\s_-]?no|plot[\s_-]?number|plot[\s_-]?no|survey[\s_-]?number|survey[\s_-]?no|landmark|near[\s_-]?by|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
+				// High confidence - bare "address" as the ENTIRE column name only (anchored).
+				// Kept separate from the word-bounded list below so it doesn't fire as a suffix on
+				// "ip_address", "mail_address", "mac_address" — those belong to their own entities.
+				Regexp: regexp.MustCompile(`(?i)^address$`),
 				Weight: 1.0,
 			},
 			{
-				// Medium confidence - generic geography/admin words and single road-type words/abbreviations;
-				// each has a plausible non-address meaning (state=status, block=code block, ave=average, dr=doctor/debit,
-				// ct=count, pl=P&L, sq/square=math square, drive=disk/fundraising drive, court=legal court,
-				// circle=telecom/postal circle in India, place=ranking, route=delivery/bus/network route,
-				// house=political House, flat=musical flat, suite=software/test suite, plot=chart plot, lane=traffic/bowling lane)
-				Regexp: regexp.MustCompile(`(?i)\b(locality|area|region|district|village|town|city|municipality|state|province|county|territory|zone|borough|ward|sector|block|unit|ave|dr|ct|pl|sq|cir|square|lane|drive|court|circle|place|route|house|flat|suite|plot)\b`),
-				Weight: 0.5,
+				// High confidence - unambiguous address-specific column names (word-bounded)
+				Regexp: regexp.MustCompile(`(?i)\b(address[\s_-]?line[\s_-]?1|address[\s_-]?line[\s_-]?2|address[\s_-]?line[\s_-]?3|address[\s_-]?1|address[\s_-]?2|address[\s_-]?3|addr|addr[\s_-]?line[\s_-]?1|addr[\s_-]?line[\s_-]?2|street|street[\s_-]?address|street[\s_-]?name|road|road[\s_-]?name|avenue|boulevard|blvd|highway|hwy|sub[\s_-]?district|country|nation|building|building[\s_-]?name|house[\s_-]?number|house[\s_-]?no|flat[\s_-]?number|flat[\s_-]?no|apartment|apartment[\s_-]?number|apt|unit[\s_-]?number|door[\s_-]?number|door[\s_-]?no|plot[\s_-]?number|plot[\s_-]?no|survey[\s_-]?number|survey[\s_-]?no|landmark|near[\s_-]?by|postal[\s_-]?address|mailing[\s_-]?address|residential[\s_-]?address|permanent[\s_-]?address|current[\s_-]?address|office[\s_-]?address|home[\s_-]?address|billing[\s_-]?address|shipping[\s_-]?address|delivery[\s_-]?address|communication[\s_-]?address|correspondence[\s_-]?address)\b`),
+				Weight: 1.0,
 			},
 			{
 				// Low confidence - broad fallback
@@ -774,13 +770,13 @@ func (r *regexColumnDetector) Init() error {
 				// High confidence - TAN column names qualified with a number/id/code suffix or a tax/TDS/TCS phrase.
 				// Bare "tan" and generic "tax_account"/"tax_account_number" moved to Medium below —
 				// "tan" collides with suntan and the trigonometric function; "tax_account" is generic ledger terminology.
-				Regexp: regexp.MustCompile(`(?i)\b(tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(tan|tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
 			{
 				// Medium confidence - bare "tan" and generic tax-account terms
-				Regexp: regexp.MustCompile(`(?i)\b(tan|tax[\s_-]?account[\s_-]?number|tax[\s_-]?account)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(tax[\s_-]?account[\s_-]?number|tax[\s_-]?account)\b`),
 				Weight: 0.5,
 				Region: RegionIndia,
 			},
@@ -869,9 +865,17 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_ABHANumber: {
 			{
-				// High confidence - ABHA/ABDM Health ID related column names (word-bounded)
-				Regexp: regexp.MustCompile(`(?i)\b(abha|abha[\s_-]?number|abha[\s_-]?num|abha[\s_-]?no|abha[\s_-]?id|abha[\s_-]?identifier|abha[\s_-]?address|abha[\s_-]?card|abha[\s_-]?card[\s_-]?number|abha[\s_-]?health[\s_-]?id|abha[\s_-]?health[\s_-]?identifier|health[\s_-]?id|health[\s_-]?identifier|health[\s_-]?identity|health[\s_-]?number|health[\s_-]?card[\s_-]?number|health[\s_-]?account|health[\s_-]?account[\s_-]?number|healthid|healthid[\s_-]?number|healthid[\s_-]?identifier|health[\s_-]?unique[\s_-]?id|health[\s_-]?unique[\s_-]?identifier|abdm|abdm[\s_-]?id|abdm[\s_-]?identifier|abdm[\s_-]?number|abdm[\s_-]?health[\s_-]?id|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account[\s_-]?number|ayushman[\s_-]?health[\s_-]?account|national[\s_-]?health[\s_-]?id|digital[\s_-]?health[\s_-]?id)\b`),
+				// High confidence - ABHA/ABDM/Ayushman-qualified column names (word-bounded).
+				// Bare "health_id"/"health_number"/"national_health_id" moved to Medium below —
+				// collides with the UK's National Health (Service) Number and generic hospital/insurer health-record IDs.
+				Regexp: regexp.MustCompile(`(?i)\b(abha|abha[\s_-]?number|abha[\s_-]?num|abha[\s_-]?no|abha[\s_-]?id|abha[\s_-]?identifier|abha[\s_-]?address|abha[\s_-]?card|abha[\s_-]?card[\s_-]?number|abha[\s_-]?health[\s_-]?id|abha[\s_-]?health[\s_-]?identifier|abdm|abdm[\s_-]?id|abdm[\s_-]?identifier|abdm[\s_-]?number|abdm[\s_-]?health[\s_-]?id|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account|ayushman[\s_-]?bharat[\s_-]?health[\s_-]?account[\s_-]?number|ayushman[\s_-]?health[\s_-]?account|digital[\s_-]?health[\s_-]?id)\b`),
 				Weight: 1.0,
+				Region: RegionIndia,
+			},
+			{
+				// Medium confidence - bare/generic health-ID terms without an ABHA/ABDM/Ayushman qualifier
+				Regexp: regexp.MustCompile(`(?i)\b(health[\s_-]?id|health[\s_-]?identifier|health[\s_-]?identity|health[\s_-]?number|health[\s_-]?card[\s_-]?number|health[\s_-]?account|health[\s_-]?account[\s_-]?number|healthid|healthid[\s_-]?number|healthid[\s_-]?identifier|health[\s_-]?unique[\s_-]?id|health[\s_-]?unique[\s_-]?identifier|national[\s_-]?health[\s_-]?id)\b`),
+				Weight: 0.5,
 				Region: RegionIndia,
 			},
 			{

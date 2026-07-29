@@ -380,7 +380,7 @@ func (r *regexColumnDetector) Init() error {
 			{
 				// High confidence - IP address related column names (word-bounded).
 				// Bare "ip" moved to Medium below — collides with "Intellectual Property" in legal/patent schemas.
-				Regexp: regexp.MustCompile(`(?i)\b(ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|ipv4[\s_-]?address|ipv6[\s_-]?address|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(ip[\s_-]?address|ip[\s_-]?addr|ipaddr|ipaddress|ipv4|ipv6|ip[\s_-]?v4|ip[\s_-]?v6|ipv[\s_-]?4|ipv[\s_-]?6|ipv4[\s_-]?address|ipv6[\s_-]?address|client[\s_-]?ip|clientip|server[\s_-]?ip|serverip|source[\s_-]?ip|sourceip|destination[\s_-]?ip|assigned[\s_-]?ip|destinationip|dest[\s_-]?ip|destip|remote[\s_-]?ip|remoteip|local[\s_-]?ip|localip|public[\s_-]?ip|publicip|private[\s_-]?ip|privateip|host[\s_-]?ip|hostip|gateway[\s_-]?ip|gatewayip|proxy[\s_-]?ip|proxyip|forwarded[\s_-]?ip|forwardedip|origin[\s_-]?ip|originip|request[\s_-]?ip|requestip|sender[\s_-]?ip|senderip|receiver[\s_-]?ip|receiverip|visitor[\s_-]?ip|visitorip|user[\s_-]?ip|userip|device[\s_-]?ip|deviceip|machine[\s_-]?ip|machineip|network[\s_-]?ip|networkip|node[\s_-]?ip|nodeip|endpoint[\s_-]?ip|endpointip|peer[\s_-]?ip|peerip|connection[\s_-]?ip|connectionip|socket[\s_-]?ip|socketip)\b`),
 				Weight: 1.0,
 			},
 			{
@@ -767,10 +767,16 @@ func (r *regexColumnDetector) Init() error {
 		},
 		PIILabel_TAN: {
 			{
+				// High confidence - bare "tan" as the ENTIRE column name only (anchored).
+				// Kept separate from the word-bounded list below so it doesn't fire as a suffix on
+				Regexp: regexp.MustCompile(`(?i)^tan$`),
+				Weight: 1.0,
+			},
+			{
 				// High confidence - TAN column names qualified with a number/id/code suffix or a tax/TDS/TCS phrase.
 				// Bare "tan" and generic "tax_account"/"tax_account_number" moved to Medium below —
 				// "tan" collides with suntan and the trigonometric function; "tax_account" is generic ledger terminology.
-				Regexp: regexp.MustCompile(`(?i)\b(tan|tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(tan[\s_-]?number|tan[\s_-]?num|tan[\s_-]?no|tan[\s_-]?id|tan[\s_-]?identifier|tan[\s_-]?code|tax[\s_-]?deduction[\s_-]?account[\s_-]?number|tax[\s_-]?deduction[\s_-]?account|tax[\s_-]?collection[\s_-]?account[\s_-]?number|tax[\s_-]?collection[\s_-]?account|tds[\s_-]?tan|tds[\s_-]?tan[\s_-]?number|tds[\s_-]?account[\s_-]?number|tds[\s_-]?account|tcs[\s_-]?tan|tcs[\s_-]?tan[\s_-]?number|tcs[\s_-]?account[\s_-]?number|tcs[\s_-]?account|deductor[\s_-]?tan|deductor[\s_-]?tan[\s_-]?number|deductor[\s_-]?account[\s_-]?number|collector[\s_-]?tan|collector[\s_-]?tan[\s_-]?number|collector[\s_-]?account[\s_-]?number)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -788,6 +794,12 @@ func (r *regexColumnDetector) Init() error {
 			},
 		},
 		PIILabel_CIN: {
+			{
+				// High confidence - bare "CIN" as the ENTIRE column name only (anchored).
+				// Kept separate from the word-bounded list below so it doesn't fire as a suffix on
+				Regexp: regexp.MustCompile(`(?i)^cin$`),
+				Weight: 1.0,
+			},
 			{
 				// High confidence - company/corporate-qualified CIN column names (word-bounded).
 				// Bare "cin"/"cin_number" etc moved to Medium below — could mean a generic "Customer ID Number"

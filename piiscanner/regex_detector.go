@@ -1426,11 +1426,31 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_OAuthToken: {
 			{
-				Regexp: regexp.MustCompile(`ya29\..{60,200}`), // google oauth token
-				Weight: 0.8,
+				// Google OAuth Access Token
+				Regexp: regexp.MustCompile(`\bya29\.[a-zA-Z0-9_\-]{50,250}\b`),
+				Weight: 0.95,
+			},
+			{
+				// Google OAuth Refresh Token
+				Regexp: regexp.MustCompile(`\b1//[a-zA-Z0-9_\-]{40,200}\b`),
+				Weight: 0.95,
+			},
+			{
+				// GitHub OAuth / Personal Access Tokens (gho_, ghp_, ghu_, ghr_)
+				Regexp: regexp.MustCompile(`\bgh[opur]_[a-zA-Z0-9]{36,255}\b`),
+				Weight: 0.95,
+			},
+			{
+				// Slack OAuth Tokens (xoxp-, xoxb-, xoxa-, xoxr-)
+				Regexp: regexp.MustCompile(`\bxox[pbar]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,32}\b`),
+				Weight: 0.95,
+			},
+			{
+				// JWT (JSON Web Token) - standard 3-part base64 header.payload.signature
+				Regexp: regexp.MustCompile(`\beyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b`),
+				Weight: 0.90,
 			},
 		},
-
 		PIILabel_Address: {
 			{
 				Regexp: regexp.MustCompile(`(?i)\b\d+\b.{4,60}\b(st|street|ave|avenue|road|rd|drive|dr)\b`),

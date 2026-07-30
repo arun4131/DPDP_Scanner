@@ -53,25 +53,3 @@ func (s *set[T]) Contains(item T) bool {
 func (s *set[T]) Len() int {
 	return len(s.m)
 }
-
-type dummyContainsAllSet[T comparable] struct{}
-
-func NewDummyContainsAllSet[T comparable]() Set[T] {
-	return &dummyContainsAllSet[T]{}
-}
-
-func (s *dummyContainsAllSet[T]) Add(item T) {}
-
-func (s *dummyContainsAllSet[T]) Remove(item T) {}
-
-func (s *dummyContainsAllSet[T]) Contains(item T) bool {
-	return true
-}
-
-func (s *dummyContainsAllSet[T]) Slice() []T {
-	return nil
-}
-
-func (s *dummyContainsAllSet[T]) Len() int {
-	return 0
-}

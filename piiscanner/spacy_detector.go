@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	cmdprocessor "github.com/klouddb/DPA_private/pkg/cmd_processor"
+	cmdprocessor "github.com/klouddb/dpdpa_pii_db_scanner/pkg/cmd_processor"
 )
 
 // pythonResponse is the response from the python script.

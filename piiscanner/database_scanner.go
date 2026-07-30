@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/text"
-	cons "github.com/klouddb/DPA_private/pkg/const"
-	"github.com/klouddb/DPA_private/pkg/postgresdb"
-	"github.com/klouddb/DPA_private/pkg/utils"
+	cons "github.com/klouddb/dpdpa_pii_db_scanner/pkg/const"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/postgresdb"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -181,11 +181,6 @@ func (d *databasePiiScanner) resumeSpinner() {
 	if d.spinner != nil {
 		d.spinner.Resume()
 	}
-}
-
-func (d *databasePiiScanner) WithNumOfRunners(n int) *databasePiiScanner {
-	d.numOfRunners = n
-	return d
 }
 
 func (d *databasePiiScanner) DetectorFactory() []Detector {

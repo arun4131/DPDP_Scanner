@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/klouddb/DPA_private/pkg/utils"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,19 +32,6 @@ func NewPiiLabelMap() PiiLabelMap {
 	return make(map[string]map[PIILabel]WeightWithCount)
 }
 
-func NewPiiLabelMapFromPiiLableWithWeight(detector string, l []PiiLabelWithWeight) PiiLabelMap {
-	m := make(map[PIILabel]WeightWithCount)
-	for _, v := range l {
-		piiData := m[v.PIILabel]
-		piiData.Weight += v.Weight
-		piiData.Count++
-		m[v.PIILabel] = piiData
-	}
-	return map[string]map[PIILabel]WeightWithCount{
-		detector: m,
-	}
-}
-
 func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64) {
 	if _, ok := p[detector]; !ok {
 		p[detector] = make(map[PIILabel]WeightWithCount)
@@ -54,30 +41,6 @@ func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64) {
 	w.Count++
 
 	p[detector][label] = w
-}
-
-func (p PiiLabelMap) GetMax() PIILabel {
-	_, label, _ := p.GetMaxWithWeight()
-	return label
-}
-
-func (p PiiLabelMap) GetMaxWithWeight() (string, PIILabel, WeightWithCount) {
-	var maxLabel PIILabel
-	var maxScore WeightWithCount
-	var detectorName string
-
-	for name, m := range p {
-		// fmt.Println("label", label, "score", score)
-		for label, score := range m {
-			if score.Weight > maxScore.Weight {
-				maxLabel = label
-				maxScore = score
-				detectorName = name
-			}
-		}
-	}
-
-	return detectorName, maxLabel, maxScore
 }
 
 type TableScanManager struct {

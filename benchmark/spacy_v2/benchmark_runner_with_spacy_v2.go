@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klouddb/DPA_private/piiscanner"
+	"github.com/klouddb/dpdpa_pii_db_scanner/piiscanner"
 )
 
 var columnContextEntitiesSpacyV2 = map[string]string{

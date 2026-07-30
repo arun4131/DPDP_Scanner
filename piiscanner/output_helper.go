@@ -1,7 +1,6 @@
 package piiscanner
 
 import (
-	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -9,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/klouddb/DPA_private/pkg/utils"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -238,44 +237,4 @@ func printTerminalOutputSimple(i *DatabasePIIScanOutput) {
 	}
 
 	fmt.Println("For more details, please use the detailed output option")
-}
-
-func GenerateOutputFile(i *DatabasePIIScanOutput) (string, error) {
-	if i == nil || len(i.Data) == 0 {
-		return "", nil
-	}
-
-	// remove this before release
-	f, err := os.Create("output.csv")
-	if err != nil {
-		return "", fmt.Errorf("error creating output file: %v", err)
-	}
-	csvFile := csv.NewWriter(f)
-
-	for tablename, columns := range i.Data {
-		for columnName, piidatas := range columns {
-			for _, piidata := range piidatas {
-
-				data := []string{tablename, columnName, string(piidata.Label), piidata.Confidence}
-
-				if piidata.DetectorType == DetectorType_ValueDetector {
-					data = append(data, piidata.DetectorName, fmt.Sprintf("%d/%d", piidata.MatchedCount, piidata.ScanedValueCount))
-				}
-
-				if err := csvFile.Write(data); err != nil {
-					return "", fmt.Errorf("error writing to output file: %v", err)
-				}
-			}
-		}
-	}
-
-	csvFile.Flush()
-
-	if err := csvFile.Error(); err != nil {
-		return "", fmt.Errorf("error flushing output file: %v", err)
-	}
-
-	fileAbsPath, _ := filepath.Abs(f.Name())
-
-	return fileAbsPath, nil
 }

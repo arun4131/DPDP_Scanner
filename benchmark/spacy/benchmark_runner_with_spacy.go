@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/klouddb/DPA_private/piiscanner"
+	"github.com/klouddb/dpdpa_pii_db_scanner/piiscanner"
 )
 
 var columnContextEntitiesSpacy = map[string]string{

@@ -5,7 +5,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/klouddb/DPA_private/pkg/utils"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 )
 
 var (
@@ -20,22 +20,9 @@ var (
 		"user_agent",
 		"id",
 	})
-	dateStringRegex = []*regexp.Regexp{
-		regexp.MustCompile(`(?i)^\d{4}[-/]\d{2}[-/]\d{2}`),
-		regexp.MustCompile(`(?i)^\d{2}-\d{2}-\d{4}`),
-	}
 )
 
 type RunOption int
-
-func (r RunOption) String() string {
-	for k, v := range RunOptionMap {
-		if v == r {
-			return k
-		}
-	}
-	return ""
-}
 
 type DetectorType string
 
@@ -182,13 +169,4 @@ func GetValuesString(i interface{}) string {
 	default:
 		return ""
 	}
-}
-
-func IsDateString(s string) bool {
-	for _, regex := range dateStringRegex {
-		if regex.MatchString(s) {
-			return true
-		}
-	}
-	return false
 }

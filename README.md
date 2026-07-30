@@ -1,6 +1,6 @@
 # dpdpascanner — India DPDP Act PII Scanner
 
-[![Go Build](https://github.com/klouddb/DPA_private/actions/workflows/release.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/release.yml) [![Go Lint](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/golangci.yml) [![Golang Vulnerability Check](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/klouddb/DPA_private/actions/workflows/govulncheck.yml)
+[![Go Build](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/release.yml/badge.svg)](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/release.yml) [![Go Lint](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/golangci.yml/badge.svg)](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/golangci.yml) [![Golang Vulnerability Check](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/klouddb/dpdpa_pii_db_scanner/actions/workflows/govulncheck.yml)
 
 A command-line PII (Personally Identifiable Information) scanner for PostgreSQL databases, built for compliance with India's **Digital Personal Data Protection (DPDP) Act 2023**.
 
@@ -44,7 +44,7 @@ You do **not** need Python to run the scanner itself — it's only used for the 
 ## Step 1 — Clone the Repository
 
 ```bash
-git clone https://github.com/klouddb/DPA_private.git
+git clone https://github.com/klouddb/dpdpa_pii_db_scanner.git
 cd DPA_private
 ```
 
@@ -62,6 +62,7 @@ port      = 5432
 user      = "postgres"
 password  = "your_password_here"
 databases = ["my_database"]
+sslmode   = "disable" # local development only
 ```
 
 **Advanced example — multiple servers and databases:**
@@ -72,6 +73,7 @@ port      = 5432
 user      = "postgres"
 password  = "password1"
 databases = ["sales_db", "hr_db", "finance_db"]
+sslmode   = "disable" # local development only
 
 [[instances]]
 host      = "prod-server.example.com"
@@ -79,9 +81,17 @@ port      = 5432
 user      = "readonly_user"
 password  = "password2"
 databases = ["production_db"]
+sslmode   = "verify-full"
+sslrootcert = "/etc/dpdpscanner/certs/root.crt"
+# sslcert = "/etc/dpdpscanner/certs/client.crt"
+# sslkey = "/etc/dpdpscanner/certs/client.key"
 ```
 
 > `config.toml` is listed in `.gitignore`, so it will **not** be accidentally committed or pushed to GitHub. Your passwords stay local.
+>
+> TLS defaults to `require` when `sslmode` is omitted. Use `verify-full` with
+> `sslrootcert` for production servers. Set `disable` only for trusted local
+> development databases that do not support TLS.
 
 ---
 

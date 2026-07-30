@@ -3,7 +3,6 @@ package postgresdb
 import (
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -25,57 +24,69 @@ type Postgres struct {
 	MaxOpenConn int    `toml:"maxOpenConn"`
 }
 
-func (p *Postgres) HtmlReportName() string {
-	if p == nil {
-		return ""
-	}
-	return fmt.Sprintf("postgres_%s:%s_%s", p.Host, p.Port, p.DBName)
-}
-
-// Open opens a the postgres database connection specified by its connection
-// url which can be of format:
+// Open opens the PostgreSQL database connection specified by its connection
+// string, which can be of the format described at:
 // https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters
-
-var re = regexp.MustCompile(`(?m)(?:host=)([^\s]+)`)
 
 // BuildConnectionString builds a PostgreSQL connection string from the given configuration
 func BuildConnectionString(conf Postgres) string {
 	var parts []string
 
 	parts = append(parts,
-		fmt.Sprintf("host=%s", conf.Host),
-		fmt.Sprintf("port=%s", conf.Port),
-		fmt.Sprintf("user=%s", conf.User),
+		formatConnectionParameter("host", conf.Host),
+		formatConnectionParameter("port", conf.Port),
+		formatConnectionParameter("user", conf.User),
 	)
 	if conf.Password != "" {
-		parts = append(parts, fmt.Sprintf("password=%s", conf.Password))
+		parts = append(parts, formatConnectionParameter("password", conf.Password))
 	}
-	parts = append(parts, fmt.Sprintf("dbname=%s", conf.DBName))
+	parts = append(parts, formatConnectionParameter("dbname", conf.DBName))
 
 	if conf.SSLmode != "" {
-		parts = append(parts, fmt.Sprintf("sslmode=%s", conf.SSLmode))
+		parts = append(parts, formatConnectionParameter("sslmode", conf.SSLmode))
 	} else {
-		parts = append(parts, "sslmode=disable")
+		parts = append(parts, "sslmode=require")
 	}
 	if conf.SSLcert != "" {
-		parts = append(parts, fmt.Sprintf("sslcert=%s", conf.SSLcert))
+		parts = append(parts, formatConnectionParameter("sslcert", conf.SSLcert))
 	}
 	if conf.SSLkey != "" {
-		parts = append(parts, fmt.Sprintf("sslkey=%s", conf.SSLkey))
+		parts = append(parts, formatConnectionParameter("sslkey", conf.SSLkey))
 	}
 	if conf.SSLrootcert != "" {
-		parts = append(parts, fmt.Sprintf("sslrootcert=%s", conf.SSLrootcert))
+		parts = append(parts, formatConnectionParameter("sslrootcert", conf.SSLrootcert))
 	}
 
 	return strings.Join(parts, " ")
 }
 
+func formatConnectionParameter(key, value string) string {
+	if !strings.ContainsAny(value, " \t\r\n'\\=") {
+		return key + "=" + value
+	}
+
+	escaped := strings.ReplaceAll(value, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `'`, `\'`)
+	return key + "='" + escaped + "'"
+}
+
 func Open(conf Postgres) (*sql.DB, string, error) {
+	if err := validateSSLMode(conf.SSLmode); err != nil {
+		return nil, "", err
+	}
+
 	url := BuildConnectionString(conf)
 
 	db, err := ConnectDatabaseUsingConnectionString(url, conf.PingCheck)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf(
+			"connect to PostgreSQL host=%q port=%q database=%q user=%q: %w",
+			conf.Host,
+			conf.Port,
+			conf.DBName,
+			conf.User,
+			err,
+		)
 	}
 	if conf.MaxIdleConn > 0 {
 		db.SetMaxIdleConns(conf.MaxIdleConn)
@@ -84,22 +95,25 @@ func Open(conf Postgres) (*sql.DB, string, error) {
 		db.SetMaxOpenConns(conf.MaxOpenConn)
 	}
 
-	// log.Info().
-	// 	Int("Max open connections", conf.MaxOpenConn).
-	// 	Int("Max idle connections", conf.MaxIdleConn).
-	// 	Msg("Database connected successfully")
-	// fmt.Println("Database connected successfully")
-	// Extract hostname from connection string
-	hostnameGroup := re.FindStringSubmatch(url)
-	var hostname string
-	if len(hostnameGroup) < 2 {
-		log.Error().Msg("Failed to extract hostname from connection string")
+	hostname := conf.Host
+	if hostname == "" {
+		log.Error().Msg("PostgreSQL host is empty")
 		hostname = "unknown"
-	} else {
-		hostname = hostnameGroup[1]
 	}
 
 	return db, hostname, nil
+}
+
+func validateSSLMode(mode string) error {
+	switch mode {
+	case "", "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+		return nil
+	default:
+		return fmt.Errorf(
+			"invalid PostgreSQL sslmode %q (valid values: disable, allow, prefer, require, verify-ca, verify-full)",
+			mode,
+		)
+	}
 }
 
 // ConnectDatabaseUsingConnectionString connects to a PostgreSQL database using the provided connection string.
@@ -109,7 +123,6 @@ func ConnectDatabaseUsingConnectionString(url string, pingCheck bool) (*sql.DB, 
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("conn", url).
 			Msg("Failed to open database connection")
 		return nil, err
 	}
@@ -119,7 +132,6 @@ func ConnectDatabaseUsingConnectionString(url string, pingCheck bool) (*sql.DB, 
 		if err != nil {
 			log.Error().
 				Err(err).
-				Str("conn", url).
 				Msg("Failed to ping database")
 			db.Close()
 			return nil, err

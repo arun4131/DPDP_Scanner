@@ -8,7 +8,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/klouddb/DPA_private/piiscanner"
+	"github.com/klouddb/dpdpa_pii_db_scanner/piiscanner"
 )
 
 var columnContextEntities = map[string]string{

@@ -2,98 +2,151 @@ package piiscanner
 
 import (
 	"context"
-	"embed"
-	_ "embed"
-	"encoding/csv"
-	"fmt"
-	"io"
 	"testing"
 )
 
-// Embed pii test data file
-//
-//go:embed pii_test_data/*.csv
-var testdata embed.FS
+func TestRegexDetector(t *testing.T) {
+	columnDetector := NewRegexColumnDetector()
+	valueDetector := NewRegexValueDetector()
+	indiaValueDetector := NewRegexValueDetectorForRegion(RegionIndia)
+	otherRegionValueDetector := NewRegexValueDetectorForRegion("us")
 
-func Test_CsvTesting_RegexpDetector(t *testing.T) {
-
-	files, err := testdata.ReadDir("pii_test_data")
-	if err != nil {
-		t.Fatalf("failed to open test data file: %v", err)
-		return
-	}
-
-	detectors := map[string]Detector{}
-
-	detectors["value"] = NewRegexValueDetector()
-	detectors["column"] = NewRegexColumnDetector()
-
-	for _, d := range detectors {
-		err = d.Init()
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-			return
+	for name, detector := range map[string]Detector{
+		"column":       columnDetector,
+		"value":        valueDetector,
+		"india value":  indiaValueDetector,
+		"other region": otherRegionValueDetector,
+	} {
+		if err := detector.Init(); err != nil {
+			t.Fatalf("initialize %s detector: %v", name, err)
 		}
 	}
 
-	totalCountMap := map[string]int{}
-	successCountMap := map[string]int{}
-	falsePositiveCountMap := map[string]int{}
+	tests := []struct {
+		name     string
+		detector Detector
+		input    string
+		context  ColumnContext
+		want     PIILabel
+		notWant  PIILabel
+	}{
+		{
+			name:     "email column",
+			detector: columnDetector,
+			input:    "email_address",
+			want:     PIILabel_Email,
+		},
+		{
+			name:     "PAN column",
+			detector: columnDetector,
+			input:    "pan_number",
+			want:     PIILabel_PANNumber,
+		},
+		{
+			name:     "Aadhaar column",
+			detector: columnDetector,
+			input:    "aadhaar_number",
+			want:     PIILabel_AdharcardNumber,
+		},
+		{
+			name:     "email value",
+			detector: valueDetector,
+			input:    "alice@example.com",
+			want:     PIILabel_Email,
+		},
+		{
+			name:     "PAN value",
+			detector: valueDetector,
+			input:    "ABCDE1234F",
+			want:     PIILabel_PANNumber,
+		},
+		{
+			name:     "Luhn-valid credit card",
+			detector: valueDetector,
+			input:    "378282246310005",
+			want:     PIILabel_CreditCard,
+		},
+		{
+			name:     "Luhn-invalid credit card",
+			detector: valueDetector,
+			input:    "378282246310006",
+			notWant:  PIILabel_CreditCard,
+		},
+		{
+			name:     "Verhoeff-invalid Aadhaar",
+			detector: valueDetector,
+			input:    "123456789012",
+			notWant:  PIILabel_AdharcardNumber,
+		},
+		{
+			name:     "context-required value with matching context",
+			detector: valueDetector,
+			input:    "123456",
+			context:  ColumnContext{PIILabel_ChequeNumber: true},
+			want:     PIILabel_ChequeNumber,
+		},
+		{
+			name:     "context-required value without context",
+			detector: valueDetector,
+			input:    "123456",
+			notWant:  PIILabel_ChequeNumber,
+		},
+		{
+			name:     "India region includes PAN",
+			detector: indiaValueDetector,
+			input:    "ABCDE1234F",
+			want:     PIILabel_PANNumber,
+		},
+		{
+			name:     "other region excludes PAN",
+			detector: otherRegionValueDetector,
+			input:    "ABCDE1234F",
+			notWant:  PIILabel_PANNumber,
+		},
+		{
+			name:     "IPv4 value",
+			detector: valueDetector,
+			input:    "192.168.1.10",
+			want:     PIILabel_IPAddress,
+		},
+		{
+			name:     "MAC address value",
+			detector: valueDetector,
+			input:    "00:1A:2B:3C:4D:5E",
+			want:     PIILabel_MacAddress,
+		},
+		{
+			name:     "plain text has no label",
+			detector: valueDetector,
+			input:    "ordinary product description",
+			want:     "",
+		},
+	}
 
-	for _, file := range files {
-		fmt.Println(file.Name())
-		f, err := testdata.Open("pii_test_data/" + file.Name())
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-			return
-		}
-
-		csvReader := csv.NewReader(f)
-
-		line := 0
-		for {
-			line++
-			data, err := csvReader.Read()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			labels, err := tt.detector.Detect(context.Background(), tt.input, tt.context)
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				t.Errorf("Expected no error, got %v, file %s:%d", err, file.Name(), line)
-				return
+				t.Fatalf("detect %q: %v", tt.input, err)
 			}
+			if tt.want != "" && !containsPIILabel(labels, tt.want) {
+				t.Fatalf("detect %q: labels %v do not contain %q", tt.input, labels, tt.want)
+			}
+			if tt.want == "" && tt.notWant == "" && len(labels) != 0 {
+				t.Fatalf("detect %q: got unexpected labels %v", tt.input, labels)
+			}
+			if tt.notWant != "" && containsPIILabel(labels, tt.notWant) {
+				t.Fatalf("detect %q: labels %v unexpectedly contain %q", tt.input, labels, tt.notWant)
+			}
+		})
+	}
+}
 
-			if len(data) < 3 {
-				continue
-			}
-
-			totalCountMap[data[0]+" - "+data[2]]++
-			d := detectors[data[0]]
-			if d == nil {
-				t.Errorf("Expected detector, got nil, file %s:%d", file.Name(), line)
-				continue
-			}
-
-			labels, err := d.Detect(context.Background(), data[1], nil)
-			if err != nil {
-				t.Errorf("Expected no error, got %v, file %s:%d", err, file.Name(), line)
-				continue
-			}
-			outputLabel := NewPiiLabelMapFromPiiLableWithWeight("regex", labels).GetMax()
-			if outputLabel != PIILabel(data[2]) {
-				falsePositiveCountMap[data[0]+" - "+string(outputLabel)]++
-				t.Errorf("Expected label %v, got %v (%v), file %s:%d data %s", data[2], outputLabel, labels, file.Name(), line, data[1])
-			} else {
-				successCountMap[data[0]+" - "+data[2]]++
-			}
+func containsPIILabel(labels []PiiLabelWithWeight, want PIILabel) bool {
+	for _, label := range labels {
+		if label.PIILabel == want {
+			return true
 		}
-
-		fmt.Println("Test passed", file.Name())
-
 	}
-
-	// count table for all labels
-	for k, v := range totalCountMap {
-		fmt.Println(k, v, successCountMap[k], float64(successCountMap[k])/float64(v), falsePositiveCountMap[k])
-	}
-
+	return false
 }

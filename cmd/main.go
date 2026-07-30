@@ -13,16 +13,20 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/klouddb/DPA_private/piiscanner"
-	"github.com/klouddb/DPA_private/pkg/postgresdb"
+	"github.com/klouddb/dpdpa_pii_db_scanner/piiscanner"
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/postgresdb"
 )
 
 type InstanceConfig struct {
-	Host      string   `toml:"host"`
-	Port      int      `toml:"port"`
-	User      string   `toml:"user"`
-	Password  string   `toml:"password"`
-	Databases []string `toml:"databases"`
+	Host        string   `toml:"host"`
+	Port        int      `toml:"port"`
+	User        string   `toml:"user"`
+	Password    string   `toml:"password"`
+	Databases   []string `toml:"databases"`
+	SSLmode     string   `toml:"sslmode"`
+	SSLcert     string   `toml:"sslcert"`
+	SSLkey      string   `toml:"sslkey"`
+	SSLrootcert string   `toml:"sslrootcert"`
 }
 
 type AppConfig struct {
@@ -124,13 +128,16 @@ func main() {
 			fmt.Printf("\n=== Scanning %s:%d / %s ===\n", inst.Host, port, database)
 
 			pgConf := postgresdb.Postgres{
-				Host:      inst.Host,
-				Port:      strconv.Itoa(port),
-				User:      inst.User,
-				Password:  inst.Password,
-				DBName:    database,
-				SSLmode:   "disable",
-				PingCheck: true,
+				Host:        inst.Host,
+				Port:        strconv.Itoa(port),
+				User:        inst.User,
+				Password:    inst.Password,
+				DBName:      database,
+				SSLmode:     inst.SSLmode,
+				SSLcert:     inst.SSLcert,
+				SSLkey:      inst.SSLkey,
+				SSLrootcert: inst.SSLrootcert,
+				PingCheck:   true,
 			}
 
 			store, _, err := postgresdb.Open(pgConf)

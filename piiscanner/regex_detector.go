@@ -29,17 +29,8 @@ func luhnValid(number string) bool {
 	return sum%10 == 0
 }
 
-// Region constants for PII detector region gating.
-const (
-	// loads indian PII entities (Aadhaar, PAN, DL, Passport, VoterID etc.)
-	RegionIndia = "india"
-	// loads US PII entities (SSN, ITIN, ZipCode, US DL patterns etc.)
-	RegionUS = "us"
-	// loads UK PII entities (NHSNumber etc.)
-	RegionUK = "uk"
-	// RegionGlobal is default — loads all entities regardless of region.
-	RegionGlobal = "global"
-)
+// RegionIndia loads Indian PII entities (Aadhaar, PAN, DL, Passport, VoterID, etc.).
+const RegionIndia = "india"
 
 type RegexWithWeight struct {
 	Regexp                *regexp.Regexp
@@ -302,7 +293,7 @@ func NewRegexColumnDetector() Detector {
 
 // NewRegexColumnDetectorForRegion returns a new regex column detector
 // that only loads regexes matching the given region.
-// Use RegionIndia, RegionUS, RegionUK, or empty string for all regions.
+// Use RegionIndia, or an empty string for all regions.
 func NewRegexColumnDetectorForRegion(region string) Detector {
 	return &regexColumnDetector{
 		baseRegexDetector: &baseRegexDetector{isColumnDetector: true}, // ← add flag
@@ -1039,7 +1030,7 @@ func NewRegexValueDetector() Detector {
 
 // NewRegexValueDetectorForRegion returns a new regex value detector
 // that only loads regexes matching the given region.
-// Use RegionIndia, RegionUS, RegionUK, or empty string for all regions.
+// Use RegionIndia, or an empty string for all regions.
 func NewRegexValueDetectorForRegion(region string) Detector {
 	return &regexValueDetector{
 		baseRegexDetector: &baseRegexDetector{},

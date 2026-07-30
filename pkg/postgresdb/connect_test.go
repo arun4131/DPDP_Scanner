@@ -1,158 +1,16 @@
 package postgresdb
 
 import (
+	"bytes"
+	"strings"
 	"testing"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func TestBuildConnectionString(t *testing.T) {
-	tests := []struct {
-		name     string
-		config   Postgres
-		expected string
-	}{
-		{
-			name: "Basic connection without SSL",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=disable",
-		},
-		{
-			name: "Connection with SSL mode enabled",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-				SSLmode:  "require",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=require",
-		},
-		{
-			name: "Connection with SSL certificates",
-			config: Postgres{
-				Host:        "localhost",
-				Port:        "5432",
-				User:        "postgres",
-				Password:    "password",
-				DBName:      "testdb",
-				SSLmode:     "verify-full",
-				SSLcert:     "/path/to/client.crt",
-				SSLkey:      "/path/to/client.key",
-				SSLrootcert: "/path/to/root.crt",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=verify-full sslcert=/path/to/client.crt sslkey=/path/to/client.key sslrootcert=/path/to/root.crt",
-		},
-		{
-			name: "Connection with partial SSL certificates",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-				SSLmode:  "require",
-				SSLcert:  "/path/to/client.crt",
-				SSLkey:   "/path/to/client.key",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=require sslcert=/path/to/client.crt sslkey=/path/to/client.key",
-		},
-		{
-			name: "Connection with empty SSL mode defaults to disable",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-				SSLmode:  "",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=disable",
-		},
-		{
-			name: "Connection with SSL certificates but no SSL mode",
-			config: Postgres{
-				Host:        "localhost",
-				Port:        "5432",
-				User:        "postgres",
-				Password:    "password",
-				DBName:      "testdb",
-				SSLcert:     "/path/to/client.crt",
-				SSLkey:      "/path/to/client.key",
-				SSLrootcert: "/path/to/root.crt",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=disable sslcert=/path/to/client.crt sslkey=/path/to/client.key sslrootcert=/path/to/root.crt",
-		},
-		{
-			name: "Connection with special characters in password",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "pass@word#123",
-				DBName:   "testdb",
-				SSLmode:  "require",
-			},
-			expected: "host=localhost port=5432 user=postgres password=pass@word#123 dbname=testdb sslmode=require",
-		},
-		{
-			name: "Connection with IPv6 host",
-			config: Postgres{
-				Host:     "::1",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-				SSLmode:  "require",
-			},
-			expected: "host=::1 port=5432 user=postgres password=password dbname=testdb sslmode=require",
-		},
-		{
-			name: "Connection with custom port",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5433",
-				User:     "postgres",
-				Password: "password",
-				DBName:   "testdb",
-				SSLmode:  "require",
-			},
-			expected: "host=localhost port=5433 user=postgres password=password dbname=testdb sslmode=require",
-		},
-		{
-			name: "Connection with all SSL modes",
-			config: Postgres{
-				Host:        "localhost",
-				Port:        "5432",
-				User:        "postgres",
-				Password:    "password",
-				DBName:      "testdb",
-				SSLmode:     "prefer",
-				SSLcert:     "/path/to/client.crt",
-				SSLkey:      "/path/to/client.key",
-				SSLrootcert: "/path/to/root.crt",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=prefer sslcert=/path/to/client.crt sslkey=/path/to/client.key sslrootcert=/path/to/root.crt",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := BuildConnectionString(tt.config)
-			if result != tt.expected {
-				t.Errorf("BuildConnectionString() = %v, want %v", result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestBuildConnectionString_SSLModeVariations(t *testing.T) {
-	baseConfig := Postgres{
+	base := Postgres{
 		Host:     "localhost",
 		Port:     "5432",
 		User:     "postgres",
@@ -160,151 +18,149 @@ func TestBuildConnectionString_SSLModeVariations(t *testing.T) {
 		DBName:   "testdb",
 	}
 
-	sslModes := []string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
-
-	for _, mode := range sslModes {
-		t.Run("SSL mode: "+mode, func(t *testing.T) {
-			config := baseConfig
-			config.SSLmode = mode
-
-			result := BuildConnectionString(config)
-			expected := "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=" + mode
-
-			if result != expected {
-				t.Errorf("BuildConnectionString() with sslmode=%s = %v, want %v", mode, result, expected)
-			}
-		})
-	}
-}
-
-func TestBuildConnectionString_EmptyValues(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   Postgres
-		expected string
+		name string
+		edit func(*Postgres)
+		want string
 	}{
 		{
-			name: "Empty SSL certificates should not be included",
-			config: Postgres{
-				Host:        "localhost",
-				Port:        "5432",
-				User:        "postgres",
-				Password:    "password",
-				DBName:      "testdb",
-				SSLmode:     "require",
-				SSLcert:     "",
-				SSLkey:      "",
-				SSLrootcert: "",
-			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=require",
+			name: "TLS required by default",
+			want: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=require",
 		},
 		{
-			name: "Mixed empty and non-empty SSL certificates",
-			config: Postgres{
-				Host:        "localhost",
-				Port:        "5432",
-				User:        "postgres",
-				Password:    "password",
-				DBName:      "testdb",
-				SSLmode:     "require",
-				SSLcert:     "/path/to/client.crt",
-				SSLkey:      "",
-				SSLrootcert: "/path/to/root.crt",
+			name: "TLS explicitly disabled for local development",
+			edit: func(conf *Postgres) {
+				conf.SSLmode = "disable"
 			},
-			expected: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=require sslcert=/path/to/client.crt sslrootcert=/path/to/root.crt",
+			want: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=disable",
+		},
+		{
+			name: "full certificate verification",
+			edit: func(conf *Postgres) {
+				conf.SSLmode = "verify-full"
+				conf.SSLcert = "/path/to/client.crt"
+				conf.SSLkey = "/path/to/client.key"
+				conf.SSLrootcert = "/path/to/root.crt"
+			},
+			want: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=verify-full sslcert=/path/to/client.crt sslkey=/path/to/client.key sslrootcert=/path/to/root.crt",
+		},
+		{
+			name: "empty optional certificate values are omitted",
+			edit: func(conf *Postgres) {
+				conf.SSLmode = "verify-ca"
+				conf.SSLrootcert = "/path/to/root.crt"
+			},
+			want: "host=localhost port=5432 user=postgres password=password dbname=testdb sslmode=verify-ca sslrootcert=/path/to/root.crt",
+		},
+		{
+			name: "empty password is omitted",
+			edit: func(conf *Postgres) {
+				conf.Password = ""
+			},
+			want: "host=localhost port=5432 user=postgres dbname=testdb sslmode=require",
+		},
+		{
+			name: "spaces quotes backslashes and equals are escaped",
+			edit: func(conf *Postgres) {
+				conf.User = "app user"
+				conf.Password = `pa ss'w\ord=1`
+				conf.DBName = "db=name"
+			},
+			want: `host=localhost port=5432 user='app user' password='pa ss\'w\\ord=1' dbname='db=name' sslmode=require`,
+		},
+		{
+			name: "IPv6 host and custom port",
+			edit: func(conf *Postgres) {
+				conf.Host = "::1"
+				conf.Port = "5433"
+			},
+			want: "host=::1 port=5433 user=postgres password=password dbname=testdb sslmode=require",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildConnectionString(tt.config)
-			if result != tt.expected {
-				t.Errorf("BuildConnectionString() = %v, want %v", result, tt.expected)
+			conf := base
+			if tt.edit != nil {
+				tt.edit(&conf)
+			}
+
+			got := BuildConnectionString(conf)
+			if got != tt.want {
+				t.Fatalf("BuildConnectionString() = %q, want %q", got, tt.want)
+			}
+
+			db, err := ConnectDatabaseUsingConnectionString(got, false)
+			if err != nil {
+				t.Fatalf("parse generated connection string: %v", err)
+			}
+			if err := db.Close(); err != nil {
+				t.Fatalf("close database handle: %v", err)
 			}
 		})
 	}
 }
 
-func TestBuildConnectionString_OrderConsistency(t *testing.T) {
-	// Test that the connection string parameters are always in the same order
-	config := Postgres{
-		Host:        "localhost",
-		Port:        "5432",
-		User:        "postgres",
-		Password:    "password",
-		DBName:      "testdb",
-		SSLmode:     "require",
-		SSLcert:     "/path/to/client.crt",
-		SSLkey:      "/path/to/client.key",
-		SSLrootcert: "/path/to/root.crt",
+func TestValidateSSLMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		mode    string
+		wantErr bool
+	}{
+		{name: "default", mode: ""},
+		{name: "disable", mode: "disable"},
+		{name: "allow", mode: "allow"},
+		{name: "prefer", mode: "prefer"},
+		{name: "require", mode: "require"},
+		{name: "verify CA", mode: "verify-ca"},
+		{name: "verify full", mode: "verify-full"},
+		{name: "invalid", mode: "enabled", wantErr: true},
 	}
 
-	// Run the function multiple times to ensure consistent ordering
-	results := make([]string, 5)
-	for i := 0; i < 5; i++ {
-		results[i] = BuildConnectionString(config)
-	}
-
-	// All results should be identical
-	for i := 1; i < len(results); i++ {
-		if results[i] != results[0] {
-			t.Errorf("BuildConnectionString() returned inconsistent results: %v vs %v", results[0], results[i])
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSSLMode(tt.mode)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateSSLMode(%q) error = %v, wantErr %v", tt.mode, err, tt.wantErr)
+			}
+		})
 	}
 }
 
-func TestBuildConnectionString_RealWorldScenarios(t *testing.T) {
+func TestConnectionErrorsDoNotLogPasswords(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   Postgres
-		expected string
+		name       string
+		connection string
+		secret     string
 	}{
 		{
-			name: "Production-like configuration",
-			config: Postgres{
-				Host:        "prod-db.example.com",
-				Port:        "5432",
-				User:        "app_user",
-				Password:    "secure_password_123",
-				DBName:      "production_db",
-				SSLmode:     "verify-full",
-				SSLcert:     "/etc/ssl/certs/client.crt",
-				SSLkey:      "/etc/ssl/private/client.key",
-				SSLrootcert: "/etc/ssl/certs/ca-bundle.crt",
-			},
-			expected: "host=prod-db.example.com port=5432 user=app_user password=secure_password_123 dbname=production_db sslmode=verify-full sslcert=/etc/ssl/certs/client.crt sslkey=/etc/ssl/private/client.key sslrootcert=/etc/ssl/certs/ca-bundle.crt",
-		},
-		{
-			name: "Development configuration",
-			config: Postgres{
-				Host:     "localhost",
-				Port:     "5432",
-				User:     "dev_user",
-				Password: "dev_password",
-				DBName:   "dev_db",
-				SSLmode:  "disable",
-			},
-			expected: "host=localhost port=5432 user=dev_user password=dev_password dbname=dev_db sslmode=disable",
-		},
-		{
-			name: "Docker container configuration",
-			config: Postgres{
-				Host:     "postgres-container",
-				Port:     "5432",
-				User:     "postgres",
-				Password: "docker_password",
-				DBName:   "app_db",
-				SSLmode:  "prefer",
-			},
-			expected: "host=postgres-container port=5432 user=postgres password=docker_password dbname=app_db sslmode=prefer",
+			name:       "invalid SSL mode",
+			connection: "host=localhost password=supersecret sslmode=not-a-mode",
+			secret:     "supersecret",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildConnectionString(tt.config)
-			if result != tt.expected {
-				t.Errorf("BuildConnectionString() = %v, want %v", result, tt.expected)
+			var output bytes.Buffer
+			previousLogger := log.Logger
+			log.Logger = zerolog.New(&output)
+			t.Cleanup(func() {
+				log.Logger = previousLogger
+			})
+
+			db, err := ConnectDatabaseUsingConnectionString(tt.connection, true)
+			if db != nil {
+				_ = db.Close()
+			}
+			if err == nil {
+				t.Fatal("expected invalid connection string to return an error")
+			}
+			if strings.Contains(err.Error(), tt.secret) {
+				t.Fatalf("connection error exposed password %q", tt.secret)
+			}
+			if strings.Contains(output.String(), tt.secret) {
+				t.Fatalf("connection error log exposed password %q", tt.secret)
 			}
 		})
 	}

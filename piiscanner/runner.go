@@ -2,7 +2,7 @@ package piiscanner
 
 import (
 	"context"
-	"fmt"
+	"errors"
 )
 
 // PiiScanner is a detector which uses multiple detectors to detect
@@ -52,7 +52,7 @@ func (p *PiiScanner) AddValueDetector(d Detector) *PiiScanner {
 // To run PiiScanner we need at least one column and one value detector.
 func (p *PiiScanner) Init() error {
 	if len(p.columnDetector) == 0 || len(p.valueDetector) == 0 {
-		return fmt.Errorf("At least one column and one value detector must be added")
+		return errors.New("at least one column and one value detector must be added")
 	}
 
 	for _, d := range p.columnDetector {

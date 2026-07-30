@@ -28,7 +28,7 @@ func GetListFromQuery(ctx context.Context, store *sql.DB, sqlString string) ([]s
 	list := []string{}
 	rows, err := store.QueryContext(ctx, sqlString)
 	if err != nil {
-		return nil, fmt.Errorf("Error executing query: %v", err)
+		return nil, fmt.Errorf("execute query: %w", err)
 	}
 
 	defer rows.Close()
@@ -36,7 +36,7 @@ func GetListFromQuery(ctx context.Context, store *sql.DB, sqlString string) ([]s
 	for rows.Next() {
 		var v string
 		if err := rows.Scan(&v); err != nil {
-			return nil, fmt.Errorf("Error scanning row: %v", err)
+			return nil, fmt.Errorf("scan row: %w", err)
 		}
 
 		if v == "" {
@@ -44,6 +44,10 @@ func GetListFromQuery(ctx context.Context, store *sql.DB, sqlString string) ([]s
 		}
 
 		list = append(list, v)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate rows: %w", err)
 	}
 
 	return list, nil

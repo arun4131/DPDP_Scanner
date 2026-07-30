@@ -105,9 +105,10 @@ func buildHTMLData(i *DatabasePIIScanOutput, cnf Config, host string) htmlReport
 				}
 
 				confClass := "pii-conf-badge--low"
-				if pii.Confidence == "High" {
+				switch pii.Confidence {
+				case "High":
 					confClass = "pii-conf-badge--high"
-				} else if pii.Confidence == "Medium" {
+				case "Medium":
 					confClass = "pii-conf-badge--medium"
 				}
 

@@ -3,6 +3,7 @@ package cmdprocessor
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -69,7 +70,7 @@ func (c *CmdProcessor) Start(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, c.name, c.args...)
 	tty, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 40, Cols: 80})
 	if err != nil {
-		return fmt.Errorf("error while starting command %v : %v", c.name, err)
+		return fmt.Errorf("start command %s: %w", c.name, err)
 	}
 
 	c.tty = tty
@@ -91,7 +92,7 @@ func (c *CmdProcessor) Start(ctx context.Context) error {
 
 		err := cmd.Wait()
 		if err != nil {
-			c.pushError(fmt.Errorf("Error while waiting for command to finish: %v", err))
+			c.pushError(fmt.Errorf("wait for command to finish: %w", err))
 		}
 
 	}()
@@ -103,11 +104,11 @@ func (c *CmdProcessor) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Context cancelled")
+			return ctx.Err()
 		case err := <-c.errChan:
 			return err
 		case <-time.After(2 * time.Minute):
-			return fmt.Errorf("Timeout while waiting for method")
+			return errors.New("timeout while waiting for method")
 		case data := <-c.outputChan:
 			wait, err := c.waitMethod(data)
 			if err != nil {
@@ -142,7 +143,7 @@ func (c *CmdProcessor) inputFunction() {
 
 		_, err := c.tty.Write(append([]byte(msg), '\n'))
 		if err != nil {
-			c.pushError(fmt.Errorf("Error while writing to PTY: %v", err))
+			c.pushError(fmt.Errorf("write to PTY: %w", err))
 			return
 		}
 	}
@@ -159,7 +160,7 @@ func (c *CmdProcessor) outputFunction() {
 
 		buf, err := bufioReader.ReadBytes('\n')
 		if err != nil {
-			c.pushError(fmt.Errorf("Error while reading from PTY: %v", err))
+			c.pushError(fmt.Errorf("read from PTY: %w", err))
 			continue
 		}
 
@@ -177,11 +178,11 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 	defer c.mt.Unlock()
 
 	if c.writerEnded.Load() {
-		return "", fmt.Errorf("Writer has ended")
+		return "", errors.New("writer has ended")
 	}
 
 	if c.readerEnded.Load() {
-		return "", fmt.Errorf("Reader has ended")
+		return "", errors.New("reader has ended")
 	}
 
 	t := time.NewTimer(c.processTimeout)
@@ -189,18 +190,18 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 
 	select {
 	case <-t.C:
-		return "", fmt.Errorf("Timeout while while passing message to spacy")
+		return "", errors.New("timeout while passing message to spacy")
 	case err := <-c.errChan:
-		return "", fmt.Errorf("Error while passing message to spacy %v", err)
+		return "", fmt.Errorf("pass message to spacy: %w", err)
 	case c.inputChan <- msg:
 	}
 
 	for {
 		select {
 		case <-t.C:
-			return "", fmt.Errorf("Timeout while waiting for response from spacy (%v)", msg)
-		case <-c.errChan:
-			return "", fmt.Errorf("Error while waiting for response from spacy")
+			return "", fmt.Errorf("timeout waiting for response from spacy (%s)", msg)
+		case err := <-c.errChan:
+			return "", fmt.Errorf("wait for response from spacy: %w", err)
 		case out := <-c.outputChan:
 			if c.skipMethod == nil {
 				return out, nil
@@ -208,7 +209,7 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 
 			skip, err := c.skipMethod(out)
 			if err != nil {
-				return "", fmt.Errorf("Error while checking if message should be skipped: %v", err)
+				return "", fmt.Errorf("check whether message should be skipped: %w", err)
 			}
 
 			if !skip {

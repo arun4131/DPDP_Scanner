@@ -143,7 +143,7 @@ func (u *spacyDetector) Init() error {
 	// If python3 is not installed then return error.
 	python3, err := exec.LookPath("python3")
 	if err != nil {
-		return fmt.Errorf("Python 3 not found")
+		return fmt.Errorf("python 3 not found: %w", err)
 	}
 
 	// Detect the working directory where the python script is located.
@@ -171,7 +171,7 @@ func (u *spacyDetector) Init() error {
 		var out pythonResponse
 		err := json.Unmarshal([]byte(s), &out)
 		if err != nil {
-			return false, fmt.Errorf("Failed to unmarshal the output (%s) in skip method from python script: %v", s, err)
+			return false, fmt.Errorf("unmarshal output (%s) in skip method from python script: %w", s, err)
 		}
 
 		switch out.Type {
@@ -184,7 +184,7 @@ func (u *spacyDetector) Init() error {
 			// If there is any error from python script then we will
 			// return the error message to the user.
 
-			return true, fmt.Errorf("Error message from Python Script : %s", out.Message)
+			return true, fmt.Errorf("error from python script: %s", out.Message)
 		case "output":
 			// If the message is output then we need to read the output
 			// from the python script and pass that to next step so we
@@ -208,7 +208,7 @@ func (u *spacyDetector) Init() error {
 		var out pythonResponse
 		err := json.Unmarshal([]byte(s), &out)
 		if err != nil {
-			return false, fmt.Errorf("Failed to unmarshal the output (%s) wait method from python script: %v", s, err)
+			return false, fmt.Errorf("unmarshal output (%s) in wait method from python script: %w", s, err)
 		}
 
 		switch out.Type {
@@ -218,7 +218,7 @@ func (u *spacyDetector) Init() error {
 			// If there is any error from python script then we will
 			// return the error message to the user.
 
-			return false, fmt.Errorf("Python script is not stated because of error : %s", out.Message)
+			return false, fmt.Errorf("python script did not start: %s", out.Message)
 		case "output":
 			// If we get any output in waiting state then we will consider
 			// that as error because we are not expecting any output in waiting
@@ -235,7 +235,7 @@ func (u *spacyDetector) Init() error {
 	// is done we can pass continue input to python script and get
 	// the PII labels related to the input.
 	if err := u.cmdProcessor.Start(context.TODO()); err != nil {
-		return fmt.Errorf("Failed to start the python script: %v", err)
+		return fmt.Errorf("start python script: %w", err)
 	}
 
 	return nil
@@ -268,10 +268,10 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		}
 	}
 	// Process the input word and get the PII labels
-        out, err := u.cmdProcessor.Process(word)
-        if err != nil {
-                return nil, fmt.Errorf("failed to process input: %v", err)
-        }
+	out, err := u.cmdProcessor.Process(word)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process input: %v", err)
+	}
 
 	// here response string is expected in pythonResponse format
 	// so we will unmarshal the response string to pythonResponse

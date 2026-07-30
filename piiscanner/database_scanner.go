@@ -3,6 +3,7 @@ package piiscanner
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"runtime"
 	"sort"
@@ -46,7 +47,7 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 	}
 
 	if pgConfig == nil {
-		return nil, fmt.Errorf(cons.Err_PostgresConfig_Missing)
+		return nil, errors.New(cons.Err_PostgresConfig_Missing)
 	}
 
 	var useSpacy bool

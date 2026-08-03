@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -33,22 +34,8 @@ type AppConfig struct {
 	Instances []InstanceConfig `toml:"instances"`
 }
 
-type scanFlags struct {
-	runOption    string
-	schema       string
-	excludeTable string
-	includeTable string
-	printAll     bool
-	printSummary bool
-	noTimeout    bool
-}
-
 const defaultConfigPath = "/etc/dpdpscanner/config.toml"
 
-// defaultScanTimeout caps how long a single database scan may run before
-// being aborted, unless --no-timeout is set. It's referenced directly by
-// the --no-timeout flag's help text and by the timeout-suggestion message
-// below, so both stay in sync automatically if this value ever changes.
 const defaultScanTimeout = 5 * time.Minute
 
 func resolveConfigPath(configDir string) (string, error) {
@@ -63,7 +50,7 @@ func resolveConfigPath(configDir string) (string, error) {
 		return defaultConfigPath, nil
 	}
 
-	return "", fmt.Errorf("config.toml not found in current directory or %s; use --config to specify its location, or pass a postgres:// URI as the first argument", defaultConfigPath)
+	return "", fmt.Errorf("config.toml not found in current directory or %s; use --config to specify its location, or pass a postgres:// URI", defaultConfigPath)
 }
 
 func fileExists(path string) bool {
@@ -74,21 +61,14 @@ func fileExists(path string) bool {
 func main() {
 	configDir := flag.String("config", "", "directory containing config.toml (default: current directory, falling back to /etc/dpdpscanner)")
 	runOption := flag.String("piiscanner", "", "scan type: datascan | metascan | deepscan | spacyscan (leave empty for automatic per-table selection)")
-	dbFilter := flag.String("database", "", "scan only this database (leave empty to scan all); ignored when a postgres:// URI is given")
+	dbFilter := flag.String("database", "", "scan only this database (leave empty to scan all)")
 	schema := flag.String("schema", "public", "schema to scan")
 	excludeTable := flag.String("exclude-table", "", "comma-separated list of tables to exclude")
 	includeTable := flag.String("include-table", "", "comma-separated list of tables to include")
-	targetHost := flag.String("target-host", "", "scan only this host (leave empty to scan all); ignored when a postgres:// URI is given")
+	targetHost := flag.String("target-host", "", "scan only this host (leave empty to scan all)")
 	printAll := flag.Bool("print-all", false, "include low/medium confidence results in terminal, log files, and HTML report (default: high confidence only)")
 	printSummary := flag.Bool("print-summary", false, "print summary only")
 	noTimeout := flag.Bool("no-timeout", false, fmt.Sprintf("disable the %s per-database scan timeout, useful for very large databases that need more time", defaultScanTimeout))
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [flags] [postgres://user:pass@host:port/dbname]\n\n", os.Args[0])
-		fmt.Fprintf(flag.CommandLine.Output(), "Scan PostgreSQL for PII. Use config.toml, or pass a connection URI to skip the config file:\n")
-		fmt.Fprintf(flag.CommandLine.Output(), "  %s postgres://user:pass@localhost:5432/mydb?sslmode=disable\n\n", os.Args[0])
-		fmt.Fprintf(flag.CommandLine.Output(), "Flags:\n")
-		flag.PrintDefaults()
-	}
 	flag.Parse()
 
 	// piiscanner.IsValidRunOption is the single source of truth for what
@@ -101,50 +81,31 @@ func main() {
 		log.Fatalf("Invalid --piiscanner value: %q. Must be one of: %s", *runOption, strings.Join(opts, ", "))
 	}
 
-	sf := scanFlags{
-		runOption:    *runOption,
-		schema:       *schema,
-		excludeTable: *excludeTable,
-		includeTable: *includeTable,
-		printAll:     *printAll,
-		printSummary: *printSummary,
-		noTimeout:    *noTimeout,
-	}
-
 	args := flag.Args()
 	if len(args) > 1 {
-		log.Fatalf("unexpected arguments: %v (pass a single postgres:// URI, or none to use config.toml)", args)
+		log.Fatalf("unexpected arguments: %v", args)
 	}
 
+	// Optional: postgres://... as a CLI string (not stored). Skips config.toml.
 	if len(args) == 1 {
-		if !postgresdb.IsConnectionURI(args[0]) {
-			log.Fatalf("unexpected argument %q (expected a postgres:// or postgresql:// URI)", args[0])
+		uri := args[0]
+		if !postgresdb.IsConnectionURI(uri) {
+			log.Fatalf("unexpected argument %q (expected postgres:// URI or no args for config.toml)", uri)
 		}
-		if *configDir != "" {
-			log.Fatal("cannot use --config together with a postgres:// URI")
+		if *configDir != "" || *dbFilter != "" || *targetHost != "" {
+			log.Fatal("with a postgres:// URI do not use --config, --database, or --target-host")
 		}
-		if *dbFilter != "" || *targetHost != "" {
-			log.Fatal("--database and --target-host are not used with a postgres:// URI; put host and dbname in the URI instead")
+
+		store, host, database, err := postgresdb.OpenURI(uri)
+		if err != nil {
+			log.Fatal(err)
 		}
-		runFromURI(args[0], sf)
+		fmt.Printf("\n=== Scanning %s / %s ===\n", host, database)
+		runScan(store, &postgresdb.Postgres{Host: host, DBName: database}, database, *runOption, *excludeTable, *includeTable, *schema, *printAll, *printSummary, *noTimeout)
 		return
 	}
 
-	runFromConfig(*configDir, *dbFilter, *targetHost, sf)
-}
-
-func runFromURI(uri string, sf scanFlags) {
-	pgConf, err := postgresdb.ParseConnectionURI(uri)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("\n=== Scanning %s / %s ===\n", postgresdb.FormatHostPort(pgConf.Host, pgConf.Port), pgConf.DBName)
-	scanOneDatabase(pgConf, sf)
-}
-
-func runFromConfig(configDir, dbFilter, targetHost string, sf scanFlags) {
-	configPath, err := resolveConfigPath(configDir)
+	configPath, err := resolveConfigPath(*configDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -156,22 +117,22 @@ func runFromConfig(configDir, dbFilter, targetHost string, sf scanFlags) {
 		log.Fatal("No instances defined in config.toml")
 	}
 
-	if targetHost != "" {
+	if *targetHost != "" {
 		hostMatched := false
 		for _, inst := range cfg.Instances {
-			if inst.Host == targetHost {
+			if inst.Host == *targetHost {
 				hostMatched = true
 				break
 			}
 		}
 		if !hostMatched {
-			log.Fatalf("host %q not found in config.toml", targetHost)
+			log.Fatalf("host %q not found in config.toml", *targetHost)
 		}
 	}
 
 	dbMatched := false
 	for _, inst := range cfg.Instances {
-		if targetHost != "" && inst.Host != targetHost {
+		if *targetHost != "" && inst.Host != *targetHost {
 			continue
 		}
 
@@ -180,7 +141,7 @@ func runFromConfig(configDir, dbFilter, targetHost string, sf scanFlags) {
 			port = 5432
 		}
 		for _, database := range inst.Databases {
-			if dbFilter != "" && database != dbFilter {
+			if *dbFilter != "" && database != *dbFilter {
 				continue
 			}
 			dbMatched = true
@@ -200,24 +161,24 @@ func runFromConfig(configDir, dbFilter, targetHost string, sf scanFlags) {
 				PingCheck:   true,
 			}
 
-			scanOneDatabase(pgConf, sf)
+			store, _, err := postgresdb.Open(pgConf)
+			if err != nil {
+				log.Printf("  [SKIP] Could not connect: %v", err)
+				continue
+			}
+			runScan(store, &pgConf, database, *runOption, *excludeTable, *includeTable, *schema, *printAll, *printSummary, *noTimeout)
 		}
 	}
-	if dbFilter != "" && !dbMatched {
-		log.Fatalf("database %q not found in config.toml", dbFilter)
+	if *dbFilter != "" && !dbMatched {
+		log.Fatalf("database %q not found in config.toml", *dbFilter)
 	}
 }
 
-func scanOneDatabase(pgConf postgresdb.Postgres, sf scanFlags) {
-	store, _, err := postgresdb.Open(pgConf)
-	if err != nil {
-		log.Printf("  [SKIP] Could not connect: %v", err)
-		return
-	}
+func runScan(store *sql.DB, pgConf *postgresdb.Postgres, database, runOption, excludeTable, includeTable, schema string, printAll, printSummary, noTimeout bool) {
+	defer store.Close()
 
-	cnf, err := piiscanner.NewConfig(&pgConf, sf.runOption, sf.excludeTable, sf.includeTable, pgConf.DBName, sf.schema, sf.printAll, false, sf.printSummary)
+	cnf, err := piiscanner.NewConfig(pgConf, runOption, excludeTable, includeTable, database, schema, printAll, false, printSummary)
 	if err != nil {
-		store.Close()
 		log.Printf("  [SKIP] Config error: %v", err)
 		return
 	}
@@ -227,20 +188,19 @@ func scanOneDatabase(pgConf postgresdb.Postgres, sf scanFlags) {
 
 	var ctx context.Context
 	var cancel context.CancelFunc
-	if sf.noTimeout {
+	if noTimeout {
 		ctx, cancel = context.Background(), func() {}
 	} else {
 		ctx, cancel = context.WithTimeout(context.Background(), defaultScanTimeout)
 	}
 	err = scanner.Scan(ctx)
 	cancel()
-	store.Close()
 
 	if err != nil {
 		scanner.Close()
 		log.Printf("  [SKIP] Scan error: %v", err)
 		if ctx.Err() == context.DeadlineExceeded {
-			log.Printf("  Scan of %s stopped after the %s timeout — re-run with --no-timeout to let it finish without a time limit.", pgConf.DBName, defaultScanTimeout)
+			log.Printf("  Scan of %s stopped after the %s timeout — re-run with --no-timeout to let it finish without a time limit.", database, defaultScanTimeout)
 		}
 		return
 	}

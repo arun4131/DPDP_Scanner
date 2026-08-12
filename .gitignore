@@ -69,3 +69,7 @@ dpdpascanner
 
 
 kshield_pii_report.html
+
+.gitattributes
+
+scan_results/

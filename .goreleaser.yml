@@ -52,5 +52,5 @@ nfpms:
       - rpm
     contents:
       - src: conf.example.toml
-        dst: /etc/dpdpscanner/config.toml
+        dst: /etc/dpdpascanner/config.toml
         type: config

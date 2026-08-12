@@ -6,11 +6,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
+	"strings"
 )
 
 var (
 	ignoreRegexes = []*regexp.Regexp{
-		regexp.MustCompile(`(?i)^(created|updated|deleted|committed)_(at|by|on)$`),
+		regexp.MustCompile(`(?i)^(created|updated|deleted|committed)[\s_-]?(at|by|on)$`),
 		// regexp.MustCompile(`(?i)_id$`), // this is failing. here we need to all _id accept email_id
 		regexp.MustCompile(`(?i)^.*timestamp.*$`),
 		regexp.MustCompile(`(?i)^(created|updated|modified|deleted|committed|inserted|last_modified|expiry|expiration|effective|issue|invoice|payment)_date$`),
@@ -143,6 +144,8 @@ func FilterColumns(columns []string) []string {
 }
 
 func IgnoreColumn(column string) bool {
+	column = strings.ToLower(column)
+
 	if column == "email_id" {
 		return false
 	}

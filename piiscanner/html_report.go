@@ -39,12 +39,18 @@ type htmlReportData struct {
 	ShowLowConfidence  bool
 }
 
-func CreateHTMLReport(i *DatabasePIIScanOutput, cnf Config, host string) {
+func CreateHTMLReport(i *DatabasePIIScanOutput, cnf Config, host string, targetDir string) {
 	if !i.HasFindings() {
 		return
 	}
 
-	f, err := os.Create("kshield_pii_report.html")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		fmt.Println("Error creating output directory:", err)
+		return
+	}
+
+	htmlFilePath := filepath.Join(targetDir, "kshield_pii_report.html")
+	f, err := os.Create(htmlFilePath)
 	if err != nil {
 		fmt.Println("Error creating HTML report:", err)
 		return

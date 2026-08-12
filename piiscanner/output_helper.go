@@ -30,12 +30,18 @@ func printTerminalOutputTable(i *DatabasePIIScanOutput, cnf Config) {
 	GenerateTabularOutput(os.Stdout, i, cnf, "")
 }
 
-func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config) {
+func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config, targetDir string) {
 	if !i.HasFindings() {
 		return
 	}
 
-	highConfidenceFile, err := os.Create("kshield_pii_highconfidence.log")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		fmt.Println("Error creating output directory: ", text.FgRed.Sprint(err))
+		return
+	}
+
+	highConfidencePath := filepath.Join(targetDir, "kshield_pii_highconfidence.log")
+	highConfidenceFile, err := os.Create(highConfidencePath)
 	if err != nil {
 		fmt.Println("Error creating high confidence log file: ", text.FgRed.Sprint(err))
 		return
@@ -53,7 +59,8 @@ func CreateTabularOutputfile(i *DatabasePIIScanOutput, cnf Config) {
 		return
 	}
 
-	lowConfidenceFile, err := os.Create("kshield_pii_lowconfidence.log")
+	lowConfidencePath := filepath.Join(targetDir, "kshield_pii_lowconfidence.log")
+	lowConfidenceFile, err := os.Create(lowConfidencePath)
 	if err != nil {
 		fmt.Println("Error creating low confidence log file: ", text.FgRed.Sprint(err))
 		return

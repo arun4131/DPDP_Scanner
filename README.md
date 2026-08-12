@@ -81,9 +81,9 @@ user      = "readonly_user"
 password  = "password2"
 databases = ["production_db"]
 sslmode   = "verify-full"
-sslrootcert = "/etc/dpdpscanner/certs/root.crt"
-# sslcert = "/etc/dpdpscanner/certs/client.crt"
-# sslkey = "/etc/dpdpscanner/certs/client.key"
+sslrootcert = "/etc/dpdpascanner/certs/root.crt"
+# sslcert = "/etc/dpdpascanner/certs/client.crt"
+# sslkey = "/etc/dpdpascanner/certs/client.key"
 ```
 
 > `config.toml` is listed in `.gitignore`, so it will **not** be accidentally committed or pushed to GitHub. Your passwords stay local.
@@ -366,8 +366,8 @@ DPA_private/
 
 | Problem | Solution |
 |---------|----------|
-| `Failed to load config.toml` | Make sure `config.toml` exists in the folder you're running the scanner from, use `--config` to point to its location, or pass a `postgres://` URI instead. On Linux, if no local file is found the scanner also checks `/etc/dpdpscanner/config.toml` before giving up. |
-| `Could not connect` | Check that PostgreSQL is running, and that the host, port, user, and password in `config.toml` (or your URI) are correct. |
+| `Failed to load config.toml` | Make sure `config.toml` exists in the folder you're running the scanner from, or use `--config` to point to its location. On Linux, if no local file is found the scanner also checks `/etc/dpdpascanner/config.toml` before giving up. |
+| `Could not connect` | Check that PostgreSQL is running, and that the host, port, user, and password in `config.toml` are correct. |
 | `go: command not found` | Go is not installed or not on your system PATH — [install Go](https://go.dev/dl/). |
 | Scan takes a long time | Use `--piiscanner metascan` for the fastest possible scan, or `--include-table` to scan only specific tables. |
 | Scanner is asking `Do you want to continue? (yes=Y \| no=N \| yes to all=A)` | This only appears during `deepscan` on a table with more than 100,000 rows, so you don't accidentally wait hours without warning. Type `Y` to continue, `N` to skip that table, or `A` to say yes to every large table for the rest of the run. |

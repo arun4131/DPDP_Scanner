@@ -2,7 +2,6 @@ package piiscanner
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"runtime"
@@ -12,8 +11,6 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/text"
-	cons "github.com/klouddb/dpdpa_pii_db_scanner/pkg/const"
-	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/postgresdb"
 	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 	"github.com/schollz/progressbar/v3"
 )
@@ -40,15 +37,16 @@ type Config struct {
 	PrintSummaryOnly bool
 }
 
-func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTable, database, schema string,
-	printAllResults, spacyOnly, printSummaryOnly bool) (*Config, error) {
+func NewConfig(runOption, excludeTable, includeTable, database, schema string, printAllResults, spacyOnly, printSummaryOnly bool) (*Config, error) {
+	
 	if printAllResults && printSummaryOnly {
 		return nil, fmt.Errorf("--print-all and --print-summary are not allowed together")
 	}
 
-	if pgConfig == nil {
-		return nil, errors.New(cons.Err_PostgresConfig_Missing)
+	if database == "" {
+		return nil, errors.New("database name is required")
 	}
+
 
 	var useSpacy bool
 	if runOption == RunOption_SpacyScan_String {
@@ -86,10 +84,6 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 		}
 	}
 
-	if database == "" {
-		database = pgConfig.DBName
-	}
-
 	out := &Config{
 		runOption:        r,
 		AutoDetect:       autoDetect,
@@ -112,55 +106,18 @@ func NewConfig(pgConfig *postgresdb.Postgres, runOption, excludeTable, includeTa
 	return out, nil
 }
 
-type DBHelper interface {
-	GetAllTables(ctx context.Context, store *sql.DB) ([]string, error)
-	UpdateTableName(table string) string
-}
-
-type postgresDBHelper struct {
-	schema string
-}
-
-func NewPostgresDBHelper(schema string) DBHelper {
-	if schema == "" {
-		schema = "public"
-	}
-	return &postgresDBHelper{schema: schema}
-}
-
-func (p *postgresDBHelper) GetAllTables(ctx context.Context, store *sql.DB) ([]string, error) {
-	// check if schema exists
-	exists, err := utils.SchemaExists(ctx, store, p.schema)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
-		return nil, fmt.Errorf("schema %s does not exist", p.schema)
-	}
-
-	return utils.GetListFromQuery(ctx, store, "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema = '"+p.schema+"'")
-}
-
-func (p *postgresDBHelper) UpdateTableName(table string) string {
-	return fmt.Sprintf("\"%s\".\"%s\"", p.schema, table)
-}
-
 type databasePiiScanner struct {
-	h                DBHelper
-	store            *sql.DB
+	adapter          DBAdapter
 	tableScanManager *TableScanManager
 
 	numOfRunners int
-
-	cnf *Config
-
-	spinner *scanningSpinner
+	cnf          *Config
+	spinner      *scanningSpinner
 }
 
-func NewDatabasePiiScanner(h DBHelper, store *sql.DB, cnf *Config) *databasePiiScanner {
+func NewDatabasePiiScanner(adapter DBAdapter, cnf *Config) *databasePiiScanner {
 	return &databasePiiScanner{
-		h: h, store: store,
+		adapter:      adapter,
 		numOfRunners: runtime.NumCPU(),
 		cnf:          cnf,
 	}
@@ -198,16 +155,19 @@ func (d *databasePiiScanner) DetectorFactory() []Detector {
 	return detectors
 }
 
-func (d *databasePiiScanner) GetTables(ctx context.Context) ([]string, error) {
+func (d *databasePiiScanner) GetTables(ctx context.Context) ([]TableRef, error) {
 	if len(d.cnf.includeTable) != 0 {
-		return d.cnf.includeTable, nil
+		tables := make([]TableRef, len(d.cnf.includeTable))
+		for i, name := range d.cnf.includeTable {
+			tables[i] = TableRef{Schema: d.cnf.Schema, Name: name}
+		}
+		return tables, nil
 	}
 
-	tables, err := d.h.GetAllTables(ctx, d.store)
+	tables, err := d.adapter.ListTables(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tables: %v", err)
 	}
-
 	return tables, nil
 }
 
@@ -320,7 +280,7 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 	})
 
 	for _, table := range tables {
-		if d.cnf.excludeTable != nil && d.cnf.excludeTable.Contains(table) {
+		if d.cnf.excludeTable != nil && d.cnf.excludeTable.Contains(table.Name) { // was: .Contains(table)
 			continue
 		}
 
@@ -329,12 +289,10 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 			return fmt.Errorf("error starting table scan manager: %v", err)
 		}
 
-		// fmt.Println("> Processing table", table)
-		s := NewPiiTableScanner(d.h.UpdateTableName(table), d.store, d.tableScanManager, d.cnf.runOption, d.cnf.AutoDetect, d.cnf.useSpacy, d.pauseSpinner, d.resumeSpinner)
+		s := NewTableScanner(table, d.adapter, d.tableScanManager, d.cnf.runOption, d.cnf.AutoDetect, d.cnf.useSpacy, d.pauseSpinner, d.resumeSpinner)
 		if err := s.processTable(ctx); err != nil {
-			return fmt.Errorf("error processing table %s: %v", table, err)
+			return fmt.Errorf("error processing table %s: %v", table.DisplayName(), err)
 		}
-		// fmt.Println("> Done processing table", table)
 	}
 	return nil
 }
@@ -553,61 +511,53 @@ func getConfidenceLabel(weight float64) (string, string) {
 	}
 }
 
-type piiTableScanner struct {
-	tableName string
-	store     *sql.DB
+type tableScanner struct {
+	table   TableRef
+	adapter DBAdapter
 
 	tableScanManager *TableScanManager
 
 	runOption  RunOption
 	autoDetect bool
-
-	runSpacy bool
+	runSpacy   bool
 
 	pauseSpinner  func()
 	resumeSpinner func()
 }
 
-func NewPiiTableScanner(tableName string, store *sql.DB, tableScanManager *TableScanManager, runOption RunOption, autoDetect bool, runSpacy bool, pauseSpinner, resumeSpinner func()) *piiTableScanner {
-	return &piiTableScanner{
-		tableName: tableName,
-		store:     store,
-		// catcher:   catcher,
+func NewTableScanner(table TableRef, adapter DBAdapter, tableScanManager *TableScanManager, runOption RunOption, autoDetect bool, runSpacy bool, pauseSpinner, resumeSpinner func()) *tableScanner {
+	return &tableScanner{
+		table: table, adapter: adapter,
 		tableScanManager: tableScanManager,
-
-		runOption:  runOption,
-		autoDetect: autoDetect,
-		runSpacy:   runSpacy,
-
-		pauseSpinner:  pauseSpinner,
-		resumeSpinner: resumeSpinner,
+		runOption:        runOption,
+		autoDetect:       autoDetect,
+		runSpacy:         runSpacy,
+		pauseSpinner:     pauseSpinner,
+		resumeSpinner:    resumeSpinner,
 	}
 }
 
-func (p *piiTableScanner) processTable(ctx context.Context) error {
-
-	// defer fmt.Println("> Done processing table 1", p.tableName)
+func (p *tableScanner) processTable(ctx context.Context) error {
 	columns, err := p.processColumns(ctx)
 	if err != nil {
 		return fmt.Errorf("error processing columns: %v", err)
 	}
-
 	if len(columns) == 0 {
 		return nil
 	}
-
 	if p.runOption == RunOption_MetaScan {
 		return nil
 	}
 
-	coloredTableName := text.Bold.Sprint(p.tableName)
+	displayName := p.table.DisplayName()
+	coloredTableName := text.Bold.Sprint(displayName)
 
 	effectiveOption := p.runOption
 	var rowCount int
 	if p.autoDetect || p.runOption == RunOption_DataScan || p.runOption == RunOption_DeepScan || p.runOption == RunOption_SpacyScan {
-		rowCount, err = utils.TableRowCount(ctx, p.store, p.tableName)
+		rowCount, err = p.adapter.RowCount(ctx, p.table)
 		if err != nil {
-			return fmt.Errorf("error getting row count for table %s: %v", p.tableName, err)
+			return fmt.Errorf("error getting row count for table %s: %v", displayName, err)
 		}
 		if rowCount == 0 {
 			return nil
@@ -668,7 +618,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 		}
 		if showsBar {
 			bar = progressbar.NewOptions(rowCount,
-				progressbar.OptionSetDescription("Processing "+p.tableName+" table"),
+				progressbar.OptionSetDescription("Processing "+displayName+" table"),
 				progressbar.OptionShowCount(),
 				progressbar.OptionFullWidth(),
 				progressbar.OptionSetItsString("rows"),
@@ -685,7 +635,7 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 					case <-barchan:
 						count++
 					case <-t.C:
-						bar.Add(count) // nolint:errcheck
+						bar.Add(count) //nolint:errcheck
 						count = 0
 					case <-closeChan:
 						bar.Finish() //nolint:errcheck
@@ -693,80 +643,35 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 						close(closeChan)
 						close(barchan)
 						t.Stop()
-						// fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed"))
 						return
 					}
 				}
 			}()
 
-			// this is to refresh progress bar every second if file is taking more then second to process
 			defer func() {
 				closeChan <- struct{}{}
 			}()
 		}
 	}
 
-	query := fmt.Sprintf(`SELECT "%s" FROM %s`, strings.Join(columns, `","`), p.tableName)
+	opts := SampleOptions{Mode: SampleMode_Full}
 	if effectiveOption == RunOption_DataScan {
-		query = fmt.Sprintf(`SELECT "%s" FROM %s TABLESAMPLE BERNOULLI (10) REPEATABLE (%d) LIMIT 10000`, strings.Join(columns, `","`), p.tableName, DATASCAN_SAMPLE_SEED)
+		opts = SampleOptions{Mode: SampleMode_Limited, Size: 10000, Seed: DATASCAN_SAMPLE_SEED}
 	}
 
-	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 1"))
-	stmt, err := p.store.PrepareContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("error preparing statement: %v query:(%s)", err, query)
-	}
-
-	defer stmt.Close()
-	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 12"))
-	rows, err := stmt.QueryContext(ctx)
-	if err != nil {
-		return fmt.Errorf("error executing query: %v", err)
-	}
-	defer rows.Close()
-	// defer fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 123"))
-
-	count := len(columns)
-
-	for rows.Next() {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		// fmt.Println(">", coloredTableName, text.FgGreen.Sprint("scanning completed 1234"))
+	onRowScanned := func() {
 		if barchan != nil {
 			barchan <- struct{}{}
 		}
-		values := make([]interface{}, count)
-		scanArgs := make([]interface{}, count)
-		for i := range values {
-			scanArgs[i] = &values[i]
-		}
-
-		err := rows.Scan(scanArgs...)
-		if err != nil {
-			return fmt.Errorf("error scanning row: %v", err)
-		}
-
-		for i := range values {
-
-			val := GetValuesString(values[i])
-			if val == "" || val == "NULL" || val == "<nil>" {
-				continue
-			}
-
-			err := p.tableScanManager.PushValue(ScanInput{
-				Tablename:  p.tableName,
-				ColumnName: columns[i],
-				Value:      val,
-			})
-			if err != nil {
-				return fmt.Errorf("error pushing value: %v", err)
-			}
-		}
-
 	}
 
-	return nil
+	return p.adapter.StreamValues(ctx, p.table, columns, opts, onRowScanned, func(columnName, value string) error {
+		return p.tableScanManager.PushValue(ScanInput{
+			Tablename:  displayName,
+			ColumnName: columnName,
+			Value:      value,
+		})
+	})
 }
 
 // func (p *piiTableScanner) getColumns() ([]string, error) {
@@ -800,33 +705,20 @@ func (p *piiTableScanner) processTable(ctx context.Context) error {
 // 	return columns, nil
 // }
 
-func (p *piiTableScanner) processColumns(ctx context.Context) ([]string, error) {
-
-	stmt, err := p.store.PrepareContext(ctx, fmt.Sprintf(`SELECT * FROM %s limit 0`, p.tableName))
+func (p *tableScanner) processColumns(ctx context.Context) ([]string, error) {
+	rawColumns, err := p.adapter.ListColumns(ctx, p.table)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing statement: %v", err)
-	}
-	defer stmt.Close()
-	rows, err := stmt.QueryContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error executing query: %v", err)
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, fmt.Errorf("error getting columns: %v", err)
+		return nil, err
 	}
 
-	// filter unwanted columns
-	columns = FilterColumns(columns)
+	columns := FilterColumns(rawColumns)
 	if len(columns) == 0 {
 		return nil, nil
 	}
 
 	for _, column := range columns {
 		err := p.tableScanManager.PushColumn(ctx, ScanInput{
-			Tablename:  p.tableName,
+			Tablename:  p.table.DisplayName(),
 			ColumnName: column,
 		})
 		if err != nil {

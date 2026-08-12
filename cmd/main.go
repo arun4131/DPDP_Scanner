@@ -23,6 +23,8 @@ import (
 	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/sqlserverdb"
 )
 
+var version = "dev"
+
 type InstanceConfig struct {
 	Engine string `toml:"engine"` // "postgres" (default), "mysql", "mongodb", "sqlserver", "redis"
 
@@ -111,7 +113,13 @@ func main() {
 	printAll := flag.Bool("print-all", false, "include low/medium confidence results in terminal, log files, and HTML report (default: high confidence only)")
 	printSummary := flag.Bool("print-summary", false, "print summary only")
 	noTimeout := flag.Bool("no-timeout", false, fmt.Sprintf("disable the %s per-database scan timeout, useful for very large databases that need more time", defaultScanTimeout))
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("> dpdpascanner version: " + version)
+		return
+	}
 
 	if *runOption != "" && !piiscanner.IsValidRunOption(*runOption) {
 		opts := piiscanner.RunOptionSlice()

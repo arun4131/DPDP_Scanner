@@ -157,7 +157,6 @@ func (a *MongoAdapter) StreamValues(ctx context.Context, table TableRef, columns
 
 // flattenFieldValues turns one Mongo document into flat "field -> value"
 // pairs. String arrays are joined with ", " into a single value per field,
-// the same trick pdscan uses for Mongo arrays.
 func flattenFieldValues(doc bson.D, prefix string) map[string]string {
 	out := make(map[string]string)
 	for _, elem := range doc {

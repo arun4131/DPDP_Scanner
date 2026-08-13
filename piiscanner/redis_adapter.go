@@ -84,11 +84,10 @@ func (a *RedisAdapter) StreamValues(ctx context.Context, table TableRef, columns
 	return a.streamAllKeys(ctx, onRowScanned, cb)
 }
 
-// streamSampledKeys mirrors pdscan's own approach: ask Redis for one random
+// streamSampledKeys approach: ask Redis for one random
 // key at a time, repeated `size` times. RANDOMKEY can return the same key
 // more than once, so repeats are skipped rather than double-processed.
-// Note: this does `size` separate round trips to Redis — the same
-// trade-off pdscan itself accepts, not something new introduced here.
+// Note: this does `size` separate round trips to Redis
 func (a *RedisAdapter) streamSampledKeys(ctx context.Context, size int, onRowScanned func(), cb RowCallback) error {
 	seen := make(map[string]bool)
 
@@ -128,7 +127,7 @@ func (a *RedisAdapter) streamAllKeys(ctx context.Context, onRowScanned func(), c
 }
 
 // pushKey reads one key's value(s), branching on Redis type, and reports
-// every value found — same per-type handling pdscan uses.
+// every value found — same per-type handling uses.
 func (a *RedisAdapter) pushKey(ctx context.Context, key string, onRowScanned func(), cb RowCallback) error {
 	if onRowScanned != nil {
 		onRowScanned()

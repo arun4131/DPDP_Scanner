@@ -113,6 +113,8 @@ type databasePiiScanner struct {
 	numOfRunners int
 	cnf          *Config
 	spinner      *scanningSpinner
+
+	spacyDet *spacyDetector
 }
 
 func NewDatabasePiiScanner(adapter DBAdapter, cnf *Config) *databasePiiScanner {
@@ -126,6 +128,9 @@ func NewDatabasePiiScanner(adapter DBAdapter, cnf *Config) *databasePiiScanner {
 func (d *databasePiiScanner) Close() {
 	if d.spinner != nil {
 		d.spinner.Stop()
+	}
+	if d.spacyDet != nil {
+		_ = d.spacyDet.Close()
 	}
 }
 
@@ -148,8 +153,8 @@ func (d *databasePiiScanner) DetectorFactory() []Detector {
 		detectors = append(detectors, NewRegexValueDetector())
 	}
 
-	if d.cnf.useSpacy {
-		detectors = append(detectors, NewSpacyDetector().WithWorkDirs([]string{"python", "/etc/klouddbshield/python", "../../python"}))
+	if d.cnf.useSpacy && d.spacyDet != nil {
+		detectors = append(detectors, d.spacyDet)
 	}
 
 	return detectors
@@ -262,6 +267,17 @@ func (d *databasePiiScanner) Scan(ctx context.Context) error {
 	}
 
 	fmt.Println("> Found", len(tables), "tables")
+
+	if d.cnf.useSpacy {
+		det := NewSpacyDetector().
+			WithPoolSize(4).
+			WithWorkDirs([]string{"python", "/etc/klouddbshield/python", "../../python"})
+		if err := det.Init(); err != nil {
+			return fmt.Errorf("failed to init spacy pool: %w", err)
+		}
+		d.spacyDet = det
+		fmt.Println("> Initialised spaCy process pool (4 processes)")
+	}
 
 	d.tableScanManager = NewTableScanManager().WithColumnDetector(NewRegexColumnDetector())
 	if d.cnf.runOption != RunOption_MetaScan {

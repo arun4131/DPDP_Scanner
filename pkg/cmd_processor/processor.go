@@ -18,6 +18,7 @@ import (
 type CmdProcessor struct {
 	name string
 	args []string
+	cmd  *exec.Cmd
 
 	mt sync.Mutex
 
@@ -59,6 +60,19 @@ func (c *CmdProcessor) SetWaitMethod(waitMethod func(string) (bool, error)) *Cmd
 	return c
 }
 
+func (c *CmdProcessor) Close() error {
+	c.mt.Lock()
+	defer c.mt.Unlock()
+
+	if c.tty != nil {
+		_ = c.tty.Close()
+	}
+	if c.cmd != nil && c.cmd.Process != nil {
+		_ = c.cmd.Process.Kill()
+	}
+	return nil
+}
+
 func (c *CmdProcessor) Start(ctx context.Context) error {
 	c.mt.Lock()
 	defer c.mt.Unlock()
@@ -73,6 +87,7 @@ func (c *CmdProcessor) Start(ctx context.Context) error {
 		return fmt.Errorf("start command %s: %w", c.name, err)
 	}
 
+	c.cmd = cmd
 	c.tty = tty
 
 	go c.inputFunction()
@@ -161,7 +176,7 @@ func (c *CmdProcessor) outputFunction() {
 		buf, err := bufioReader.ReadBytes('\n')
 		if err != nil {
 			c.pushError(fmt.Errorf("read from PTY: %w", err))
-			continue
+			return
 		}
 
 		if !strings.HasPrefix(string(buf), "{") {

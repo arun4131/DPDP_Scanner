@@ -242,13 +242,19 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, columnConte
 						}
 					}
 					if label == PIILabel_AdharcardNumber {
-						cleaned := strings.NewReplacer(
-							" ", "",
-							"-", "",
-						).Replace(matched)
-
-						if !verhoeffValid(cleaned) {
-							continue
+						// Only require Verhoeff checksum when there is no column context
+						// confirming this is an Aadhaar field. When the column name or a
+						// JSON key already says "aadhaar", trust the context and skip the
+						// checksum — this handles real-but-synthetic Aadhaar values that
+						// don't pass Verhoeff (e.g. sequentially generated test data).
+						if !columnContext[PIILabel_AdharcardNumber] {
+							cleaned := strings.NewReplacer(
+								" ", "",
+								"-", "",
+							).Replace(matched)
+							if !verhoeffValid(cleaned) {
+								continue
+							}
 						}
 					}
 					if label == PIILabel_GSTIN {
@@ -450,7 +456,7 @@ func (r *regexColumnDetector) Init() error {
 				// High confidence - driving-licence column names qualified with a number/id/card suffix, or a
 				// full driver/driving phrase (word-bounded). Bare "dl"/"dls"/"dlno" moved to Medium below —
 				// "DL" alone is overloaded (download, delivery, digital-learning) in general schemas.
-				Regexp: regexp.MustCompile(`(?i)\b(dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(dl[\s_-]?number|dl[\s_-]?num|dl[\s_-]?no|dl[\s_-]?id|dl[\s_-]?card|dl[\s_-]?identifier|driver[\s_-]?lic|driver[\s_-]?lics|driver[\s_-]?license|driver[\s_-]?licenses|driver[\s_-]?licence|driver[\s_-]?licences|drivers[\s_-]?lic|drivers[\s_-]?lics|drivers[\s_-]?license|drivers[\s_-]?licenses|drivers[\s_-]?licence|drivers[\s_-]?licences|driver'[\s_-]?lic|driver'[\s_-]?license|driver'[\s_-]?licence|driver's[\s_-]?lic|driver's[\s_-]?license|driver's[\s_-]?licence|driv[\s_-]?lic|driv[\s_-]?licen|driv[\s_-]?license|driv[\s_-]?licenses|driv[\s_-]?licence|driv[\s_-]?licences|driving[\s_-]?lic|driving[\s_-]?licen|driving[\s_-]?license|driving[\s_-]?licenses|driving[\s_-]?licence|driving[\s_-]?licences|driving[\s_-]?permit|driver[\s_-]?permit|driving[\s_-]?permit[\s_-]?number|driver[\s_-]?license[\s_-]?number|driver[\s_-]?licence[\s_-]?number|driving[\s_-]?license[\s_-]?number|driving[\s_-]?licence[\s_-]?number|driver[\s_-]?license[\s_-]?no|driver[\s_-]?licence[\s_-]?no|driving[\s_-]?license[\s_-]?no|driving[\s_-]?licence[\s_-]?no|driver[\s_-]?license[\s_-]?num|driver[\s_-]?licence[\s_-]?num|driving[\s_-]?license[\s_-]?num|driving[\s_-]?licence[\s_-]?num|driver[\s_-]?license[\s_-]?id|driver[\s_-]?licence[\s_-]?id|driving[\s_-]?license[\s_-]?id|driving[\s_-]?licence[\s_-]?id|driver[\s_-]?license[\s_-]?card|driver[\s_-]?licence[\s_-]?card|driving[\s_-]?license[\s_-]?card|driving[\s_-]?licence[\s_-]?card)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1481,9 +1487,10 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_RationCard: {
 			{
 				// Ration card: state code + alphanumeric
-				Regexp: regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
-				Weight: 0.7,
-				Region: RegionIndia,
+				Regexp:                regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
+				Weight:                0.7,
+				Region:                RegionIndia,
+				RequiresColumnContext: true,
 			},
 		},
 		PIILabel_SEBIRegistration: {

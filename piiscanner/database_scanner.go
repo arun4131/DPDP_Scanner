@@ -379,6 +379,14 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 		for columnName, piiMap := range table.PiiDataMap {
 			output.Data[table.TableName][columnName] = []PIIDataWithWeightString{}
 
+			hasColumnMatch := false
+			for _, piiData := range piiMap.ColumnMap {
+				if len(piiData) > 0 {
+					hasColumnMatch = true
+					break
+				}
+			}
+
 			for detector, piiData := range piiMap.ColumnMap {
 				for label, pii := range piiData {
 					piiDataWithWeight := NewPIIDataWithWeightString(label, pii.Weight, DetectorType_ColumnDetector, detector)
@@ -387,12 +395,43 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 			}
 
 			count := d.tableScanManager.valueCount[table.TableName][columnName]
+
+			// Adaptive Density Threshold for Phase 1:
+			// Default to 30% density for unrecognized columns to suppress statistical noise.
+			// Exception: if 2+ distinct entity types each appear in ≥10% of rows, the column is
+			// clearly a multi-entity container (JSON blob, free-text narrative, CSV dump, raw PII store).
+			// Lower the threshold to 10% so minority entities (e.g. Aadhaar at 19%, UPI at 24%,
+			// or Phone at 28% when spread across rows) are still surfaced.
+			phase1DensityThreshold := 0.30
+			if !hasColumnMatch && count > 0 {
+				confirmedEntityCount := 0
+				for _, piiData := range piiMap.ValueMap {
+					for _, pii := range piiData {
+						if float64(pii.Count)/float64(count) >= 0.10 {
+							confirmedEntityCount++
+						}
+					}
+				}
+				if confirmedEntityCount >= 2 {
+					phase1DensityThreshold = 0.10
+				}
+			}
+
 			for detector, piiData := range piiMap.ValueMap {
 				for label, pii := range piiData {
 					var finalWeight float64
 					if count != 0 {
 						finalWeight = pii.Weight / float64(count)
 					}
+
+					// Unrecognized Column Name Filter:
+					if !hasColumnMatch && count > 0 {
+						density := float64(pii.Count) / float64(count)
+						if density < phase1DensityThreshold {
+							continue
+						}
+					}
+
 					if PiiEntitiesForWeightMergeLogic.Contains(label) {
 						columnWeight := piiMap.ColumnMap["regex"][label].Weight
 						if columnWeight >= 0.4 {
@@ -418,36 +457,13 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 			})
 
 			// Phase 2 Fallback Scan for Unrecognized Columns
-			// If column had no column match AND no high/medium value match, test buffered values against RequiresColumnContext entities
-			hasValidMatch := false
-			for _, item := range output.Data[table.TableName][columnName] {
-				if item.Confidence == "High" || item.Confidence == "Medium" {
-					hasValidMatch = true
-					break
-				}
-			}
-
-			if !hasValidMatch {
+			// Runs for unrecognized column names (hasColumnMatch == false) to find additional text/Category C entities.
+			if !hasColumnMatch {
 				sampleVals := d.tableScanManager.UnrecognizedValues[table.TableName][columnName]
 				if len(sampleVals) > 0 {
 					fallbackDetector := NewRegexValueDetector()
 					if err := fallbackDetector.Init(); err == nil {
-						fallbackContext := ColumnContext{
-							PIILabel_BankAccountNumber:     true,
-							PIILabel_ChequeNumber:          true,
-							PIILabel_CIFNumber:             true,
-							PIILabel_LoanAccountNumber:     true,
-							PIILabel_InsurancePolicyNumber: true,
-							PIILabel_FASTagID:              true,
-							PIILabel_CVV:                   true,
-							PIILabel_Phone:                 true,
-							PIILabel_MICRCode:              true,
-							PIILabel_UAN:                   true,
-							PIILabel_VoterID:               true,
-							PIILabel_PassportNumber:        true,
-							PIILabel_TAN:                   true,
-							PIILabel_DrivingLicenceNumber:  true,
-						}
+						fallbackContext := ColumnContext{}
 
 						labelHits := make(map[PIILabel]int)
 						labelWeights := make(map[PIILabel]float64)
@@ -461,11 +477,36 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 						}
 
 						totalSamples := len(sampleVals)
+
+						// Adaptive Density Threshold for Phase 2:
+						// Default to 30% density. If Phase 1 already confirmed at least one entity,
+						// lower the threshold to 10% so additional entities are surfaced.
+						phase2DensityThreshold := 0.30
+						if len(output.Data[table.TableName][columnName]) > 0 {
+							phase2DensityThreshold = 0.10
+						}
+
 						for lbl, hits := range labelHits {
 							if hits > 0 {
-								// Average weight over sampled values
+								density := float64(hits) / float64(totalSamples)
+								if density < phase2DensityThreshold {
+									continue
+								}
+
+								// Prevent duplicate entry if label was already detected in Phase 1
+								alreadyExists := false
+								for _, existing := range output.Data[table.TableName][columnName] {
+									if existing.Label == lbl {
+										alreadyExists = true
+										break
+									}
+								}
+								if alreadyExists {
+									continue
+								}
+
+								// Average weight over sampled values (cap at Medium 🟡)
 								avgWeight := labelWeights[lbl] / float64(totalSamples)
-								// Phase 2: column name unrecognized → cap at Medium 🟡 (never High 🔴)
 								if avgWeight >= 0.70 {
 									avgWeight = 0.69
 								}
@@ -474,12 +515,135 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 								output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)
 							}
 						}
-
-						// Re-sort column findings so top confidence result is first
-						sort.Slice(output.Data[table.TableName][columnName], func(i, j int) bool {
-							return output.Data[table.TableName][columnName][i].Weight > output.Data[table.TableName][columnName][j].Weight
-						})
 					}
+				}
+			}
+
+			// Phase 3 Deep Fallback Scan for Fixed-Length Numeric / ID Entities
+			// Runs for unrecognized column names (hasColumnMatch == false) to find additional fixed-length ID entities.
+			if !hasColumnMatch {
+				sampleVals := d.tableScanManager.UnrecognizedValues[table.TableName][columnName]
+				if len(sampleVals) > 0 {
+					fallbackDetector := NewRegexValueDetector()
+					if err := fallbackDetector.Init(); err == nil {
+						// Bounded Phase 3 context allowing fixed-length/domain-gated entities from Phase3Entities map
+						phase3Context := ColumnContext{}
+						for k, v := range Phase3Entities {
+							phase3Context[k] = v
+						}
+
+						// Remove any label that was ALREADY detected in Phase 1 or Phase 2
+						for _, existing := range output.Data[table.TableName][columnName] {
+							delete(phase3Context, existing.Label)
+						}
+
+						if len(phase3Context) == 0 {
+							continue
+						}
+
+						labelHits := make(map[PIILabel]int)
+						labelWeights := make(map[PIILabel]float64)
+
+						for _, val := range sampleVals {
+							labels, _ := fallbackDetector.Detect(context.TODO(), val, phase3Context)
+							for _, lbl := range labels {
+								if phase3Context[lbl.PIILabel] {
+									labelHits[lbl.PIILabel]++
+									labelWeights[lbl.PIILabel] += lbl.Weight
+								}
+							}
+						}
+
+						totalSamples := len(sampleVals)
+
+						// Adaptive Density Threshold for Phase 3:
+						// Default to 30% density. If Phase 1 or 2 already confirmed at least one entity,
+						// lower threshold to 10%.
+						phase3DensityThreshold := 0.30
+						if len(output.Data[table.TableName][columnName]) > 0 {
+							phase3DensityThreshold = 0.10
+						}
+
+						// Calculate table's dominant domain from previously recognized High/Medium confidence entities
+						dominantDomain := getTableDominantDomain(output.Data[table.TableName])
+
+						for lbl, hits := range labelHits {
+							if hits > 0 {
+								// Phase 3 Domain Gate:
+								// Domain-specific Phase 3 fallback IDs (Banking, Employment, NationalID)
+								// REQUIRE positive table domain confirmation! If table domain is unknown ("")
+								// or conflicts, reject the fallback candidate to prevent false positive noise.
+								candidateDomain := EntityDomainMap[lbl]
+								if candidateDomain != DomainPersonal && candidateDomain != dominantDomain {
+									continue
+								}
+
+								density := float64(hits) / float64(totalSamples)
+								if density < phase3DensityThreshold {
+									continue
+								}
+
+								// Prevent duplicate entry if label was already detected in Phase 1 or 2
+								alreadyExists := false
+								for _, existing := range output.Data[table.TableName][columnName] {
+									if existing.Label == lbl {
+										alreadyExists = true
+										break
+									}
+								}
+								if alreadyExists {
+									continue
+								}
+
+								// Average weight over sampled values (cap at Medium 🟡)
+								avgWeight := labelWeights[lbl] / float64(totalSamples)
+								if avgWeight >= 0.70 {
+									avgWeight = 0.69
+								}
+								piiDataWithWeight := NewPIIDataWithWeightString(lbl, avgWeight, DetectorType_ValueDetector, "regex")
+								piiDataWithWeight.SetScanedValueAndMatchCount(hits, totalSamples)
+								output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)
+							}
+						}
+					}
+				}
+			}
+
+			// Primary Winner Suppression:
+			// If a column contains at least one High confidence finding, suppress all secondary lower-confidence
+			// findings (Medium/Low) for that same column so noisy secondary hits don't clutter reports.
+			hasHigh := false
+			for _, item := range output.Data[table.TableName][columnName] {
+				if item.Confidence == "High" {
+					hasHigh = true
+					break
+				}
+			}
+
+			if hasHigh {
+				filtered := make([]PIIDataWithWeightString, 0, len(output.Data[table.TableName][columnName]))
+				for _, item := range output.Data[table.TableName][columnName] {
+					if item.Confidence == "High" {
+						filtered = append(filtered, item)
+					}
+				}
+				output.Data[table.TableName][columnName] = filtered
+			} else {
+				hasMedium := false
+				for _, item := range output.Data[table.TableName][columnName] {
+					if item.Confidence == "Medium" {
+						hasMedium = true
+						break
+					}
+				}
+				if hasMedium {
+					filtered := make([]PIIDataWithWeightString, 0, len(output.Data[table.TableName][columnName]))
+					for _, item := range output.Data[table.TableName][columnName] {
+						if item.Confidence == "Medium" {
+							filtered = append(filtered, item)
+						}
+					}
+					output.Data[table.TableName][columnName] = filtered
 				}
 			}
 
@@ -745,19 +909,28 @@ func (p *tableScanner) processColumns(ctx context.Context) ([]string, error) {
 // 	return nil
 // }
 
-// func (p *piiTableScanner) getFinalResult() map[string]PIILabel {
-// 	out := make(map[string]PIILabel)
+// getTableDominantDomain calculates the dominant functional domain for a table
+// based on recognized High and Medium confidence entities.
+func getTableDominantDomain(tableOutput map[string][]PIIDataWithWeightString) Domain {
+	domainScores := make(map[Domain]int)
+	for _, piiList := range tableOutput {
+		for _, item := range piiList {
+			if item.Confidence == "High" || item.Confidence == "Medium" {
+				domain := EntityDomainMap[item.Label]
+				if domain != "" {
+					domainScores[domain]++
+				}
+			}
+		}
+	}
 
-// 	for column, labelScore := range p.result {
-// 		maxScore := 0.0
-// 		out[column] = ""
-// 		for label, score := range labelScore {
-// 			if score > maxScore {
-// 				maxScore = score
-// 				out[column] = label
-// 			}
-// 		}
-// 	}
-
-// 	return out
-// }
+	var dominant Domain
+	maxScore := 0
+	for domain, score := range domainScores {
+		if score > maxScore {
+			maxScore = score
+			dominant = domain
+		}
+	}
+	return dominant
+}

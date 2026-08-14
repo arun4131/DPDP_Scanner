@@ -92,19 +92,72 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		}
 
 		// Determine column context once per column name using column detector
-		// Determine all PII labels associated with this column name.
 		columnContext := t.getColumnContext(ctx, data.ColumnName)
 
+		// Preprocess value (URL/Base64 decode) and extract internal key-value pairs
+		processedValue, kvPairs := PreprocessAndExtractKV(data.Value)
+
+		// Merge internal key context if KV pairs exist (e.g. "account", "ifsc", "pan", "aadhaar")
+		if len(kvPairs) > 0 {
+			mergedContext := make(ColumnContext)
+			for label, enabled := range columnContext {
+				mergedContext[label] = enabled
+			}
+			for _, kv := range kvPairs {
+				internalCtx := t.getColumnContext(ctx, kv.Key)
+				for label, enabled := range internalCtx {
+					if enabled {
+						mergedContext[label] = true
+					}
+				}
+			}
+			columnContext = mergedContext
+		}
+
+		scanVal := processedValue
+		if scanVal == "" {
+			scanVal = data.Value
+		}
+
 		for _, detector := range t.detectors {
-			labels, err := detector.Detect(ctx, data.Value, columnContext)
+			// Collect labels from raw (or preprocessed) blob value
+			rawLabels, err := detector.Detect(ctx, scanVal, columnContext)
 			if err != nil {
 				return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
 			}
+
+			// Merge with labels from individual extracted KV pair values.
+			// Use a map keyed by PIILabel so each entity is counted only ONCE per row,
+			// keeping the highest-weight occurrence (raw vs KV pair).
+			merged := make(map[PIILabel]PiiLabelWithWeight)
+			for _, lbl := range rawLabels {
+				merged[lbl.PIILabel] = lbl
+			}
+			for _, kv := range kvPairs {
+				kvCtx := t.getColumnContext(ctx, kv.Key)
+				kvLabels, err := detector.Detect(ctx, kv.Value, kvCtx)
+				if err != nil {
+					continue
+				}
+				for _, lbl := range kvLabels {
+					if existing, ok := merged[lbl.PIILabel]; !ok || lbl.Weight > existing.Weight {
+						merged[lbl.PIILabel] = lbl
+					}
+				}
+			}
+
+			// Flatten deduplicated map back to slice
+			finalLabels := make([]PiiLabelWithWeight, 0, len(merged))
+			for _, lbl := range merged {
+				finalLabels = append(finalLabels, lbl)
+			}
+
+			// Emit a single ScanOutput per row — count is now accurate (1 match per row per label)
 			t.outputChan <- ScanOutput{
 				Type:      "value",
 				ScanInput: data,
 				Detector:  detector.Name(),
-				Labels:    labels,
+				Labels:    finalLabels,
 			}
 		}
 	}

@@ -85,7 +85,10 @@ func (u *spacyDetector) WithPoolSize(n int) *spacyDetector {
 }
 
 // createSingleProcessor spawns and initializes one CmdProcessor instance.
-func (u *spacyDetector) createSingleProcessor() (*cmdprocessor.CmdProcessor, error) {
+func (u *spacyDetector) createSingleProcessor(ctx context.Context) (*cmdprocessor.CmdProcessor, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	cp := cmdprocessor.NewCmdProcessor(u.pythonPath, u.scriptPath)
 
 	cp.SetSkipMethod(func(s string) (bool, error) {
@@ -120,7 +123,7 @@ func (u *spacyDetector) createSingleProcessor() (*cmdprocessor.CmdProcessor, err
 		return true, nil
 	})
 
-	if err := cp.Start(context.TODO()); err != nil {
+	if err := cp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("start python script: %w", err)
 	}
 
@@ -160,7 +163,7 @@ func (u *spacyDetector) Init() error {
 
 	for i := 0; i < u.poolSize; i++ {
 		go func() {
-			cp, err := u.createSingleProcessor()
+			cp, err := u.createSingleProcessor(context.Background())
 			if err != nil {
 				results <- result{err: err}
 				return
@@ -246,6 +249,11 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		}
 	}
 
+	// Ensure pool is initialized (lazy initialization if not done explicitly)
+	if err := u.Init(); err != nil {
+		return nil, fmt.Errorf("spacy detector init failed: %w", err)
+	}
+
 	u.initMu.Lock()
 	if !u.isInit || u.processors == nil {
 		u.initMu.Unlock()
@@ -267,12 +275,12 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 	// Replace newlines with space to prevent PTY line protocol desynchronization
 	sanitizedWord := strings.ReplaceAll(strings.ReplaceAll(word, "\r", " "), "\n", " ")
 
-	out, err := cp.Process(sanitizedWord)
+	out, err := cp.ProcessContext(ctx, sanitizedWord)
 	if err != nil {
 		// Process failed — close dead processor and attempt to replace it so pool stays healthy
 		_ = cp.Close()
 
-		if replacement, repErr := u.createSingleProcessor(); repErr == nil {
+		if replacement, repErr := u.createSingleProcessor(ctx); repErr == nil {
 			u.initMu.Lock()
 			if u.isInit && u.processors != nil {
 				// Replace in allProcessors tracking
@@ -309,7 +317,7 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 
 	var resp pythonResponse
 	if err := json.Unmarshal([]byte(out), &resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
 	}
 
 	if resp.Data == nil || len(resp.Data.Entities) == 0 {

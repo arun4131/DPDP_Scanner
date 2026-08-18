@@ -189,6 +189,10 @@ func (c *CmdProcessor) outputFunction() {
 }
 
 func (c *CmdProcessor) Process(msg string) (string, error) {
+	return c.ProcessContext(context.Background(), msg)
+}
+
+func (c *CmdProcessor) ProcessContext(ctx context.Context, msg string) (string, error) {
 	c.mt.Lock()
 	defer c.mt.Unlock()
 
@@ -204,6 +208,8 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 	defer t.Stop()
 
 	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
 	case <-t.C:
 		return "", errors.New("timeout while passing message to spacy")
 	case err := <-c.errChan:
@@ -213,6 +219,8 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
 		case <-t.C:
 			return "", fmt.Errorf("timeout waiting for response from spacy (%s)", msg)
 		case err := <-c.errChan:
@@ -232,5 +240,4 @@ func (c *CmdProcessor) Process(msg string) (string, error) {
 			}
 		}
 	}
-
 }

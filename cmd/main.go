@@ -312,9 +312,9 @@ func runScan(adapter piiscanner.DBAdapter, host, database, runOption, excludeTab
 	} else {
 		ctx, cancel = context.WithTimeout(context.Background(), defaultScanTimeout)
 	}
-	err = scanner.Scan(ctx)
-	cancel()
+	defer cancel()
 
+	err = scanner.Scan(ctx)
 	if err != nil {
 		log.Printf("  [SKIP] Scan error: %v", err)
 		if ctx.Err() == context.DeadlineExceeded {

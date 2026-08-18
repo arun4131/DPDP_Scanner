@@ -8,14 +8,12 @@ package piiscanner
 // PIILabels for columns and values.
 // Python is located in python/spacy_runner.py
 //
-// POOL SUPPORT & CONCURRENCY
+// POOL SUPPORT & LAZY CONCURRENCY
 // spacyDetector manages a fixed-size pool of Python processes via WithPoolSize(n).
 // Instead of one Python process per worker (N × 763 MB RAM), a single shared
 // pool of n processes (default 4) is created. All workers share this instance.
-// The buffered channel acts as a semaphore so at most n spaCy calls run concurrently.
-// Extras block until a slot frees up.
-// Init() is thread-safe and idempotent — calling it multiple times (e.g. from multiple
-// workers) only initializes the pool once.
+// Subprocesses are spawned lazily on the first actual value detection request in Detect(),
+// ensuring zero Python processes or RAM overhead for zero-row or excluded tables.
 
 import (
 	"context"
@@ -130,15 +128,10 @@ func (u *spacyDetector) createSingleProcessor(ctx context.Context) (*cmdprocesso
 	return cp, nil
 }
 
-// Init initializes the spacyDetector process pool.
-// Idempotent and thread-safe: if called multiple times, only the first call creates the pool.
+// Init satisfies the Detector interface. It prepares paths without eagerly spawning Python processes.
 func (u *spacyDetector) Init() error {
 	u.initMu.Lock()
 	defer u.initMu.Unlock()
-
-	if u.isInit {
-		return nil
-	}
 
 	python3, err := exec.LookPath("python3")
 	if err != nil {
@@ -152,6 +145,32 @@ func (u *spacyDetector) Init() error {
 	}
 	u.scriptPath = path.Join(fileLocation, spacyFileName)
 
+	return nil
+}
+
+// ensurePoolStarted lazily spawns the Python process pool on the first value detection request.
+func (u *spacyDetector) ensurePoolStarted(ctx context.Context) error {
+	u.initMu.Lock()
+	defer u.initMu.Unlock()
+
+	if u.isInit {
+		return nil
+	}
+
+	if u.pythonPath == "" || u.scriptPath == "" {
+		python3, err := exec.LookPath("python3")
+		if err != nil {
+			return fmt.Errorf("python 3 not found: %w", err)
+		}
+		u.pythonPath = python3
+
+		fileLocation, err := u.detectWorkingDir()
+		if err != nil {
+			return err
+		}
+		u.scriptPath = path.Join(fileLocation, spacyFileName)
+	}
+
 	u.processors = make(chan *cmdprocessor.CmdProcessor, u.poolSize)
 	u.allProcessors = make([]*cmdprocessor.CmdProcessor, 0, u.poolSize)
 
@@ -163,7 +182,7 @@ func (u *spacyDetector) Init() error {
 
 	for i := 0; i < u.poolSize; i++ {
 		go func() {
-			cp, err := u.createSingleProcessor(context.Background())
+			cp, err := u.createSingleProcessor(ctx)
 			if err != nil {
 				results <- result{err: err}
 				return
@@ -186,7 +205,6 @@ func (u *spacyDetector) Init() error {
 		}
 	}
 
-	// If any worker failed during init, close all started processes to prevent leaks
 	if firstErr != nil {
 		for _, cp := range started {
 			if cp != nil {
@@ -249,9 +267,9 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		}
 	}
 
-	// Ensure pool is initialized (lazy initialization if not done explicitly)
-	if err := u.Init(); err != nil {
-		return nil, fmt.Errorf("spacy detector init failed: %w", err)
+	// Lazily spawn Python subprocesses on the first actual value detection call
+	if err := u.ensurePoolStarted(ctx); err != nil {
+		return nil, fmt.Errorf("spacy detector pool start failed: %w", err)
 	}
 
 	u.initMu.Lock()
@@ -283,7 +301,6 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		if replacement, repErr := u.createSingleProcessor(ctx); repErr == nil {
 			u.initMu.Lock()
 			if u.isInit && u.processors != nil {
-				// Replace in allProcessors tracking
 				for i, existing := range u.allProcessors {
 					if existing == cp {
 						u.allProcessors[i] = replacement

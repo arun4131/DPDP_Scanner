@@ -114,6 +114,7 @@ type databasePiiScanner struct {
 	cnf          *Config
 	spinner      *scanningSpinner
 
+	spacyMu  sync.Mutex
 	spacyDet *spacyDetector
 }
 
@@ -129,9 +130,11 @@ func (d *databasePiiScanner) Close() {
 	if d.spinner != nil {
 		d.spinner.Stop()
 	}
+	d.spacyMu.Lock()
 	if d.spacyDet != nil {
 		_ = d.spacyDet.Close()
 	}
+	d.spacyMu.Unlock()
 }
 
 func (d *databasePiiScanner) pauseSpinner() {
@@ -154,12 +157,16 @@ func (d *databasePiiScanner) DetectorFactory() []Detector {
 	}
 
 	if d.cnf.useSpacy {
+		d.spacyMu.Lock()
 		if d.spacyDet == nil {
 			d.spacyDet = NewSpacyDetector().
 				WithPoolSize(4).
 				WithWorkDirs([]string{"python", "/etc/klouddbshield/python", "../../python"})
 		}
-		detectors = append(detectors, d.spacyDet)
+		det := d.spacyDet
+		d.spacyMu.Unlock()
+
+		detectors = append(detectors, det)
 	}
 
 	return detectors

@@ -51,11 +51,14 @@ const spacyFileName = "spacy_runner.py"
 const defaultSpacyPoolSize = 4
 
 type spacyDetector struct {
-	workDirs   []string
-	poolSize   int
-	processors chan *cmdprocessor.CmdProcessor
-	initMu     sync.Mutex
-	isInit     bool
+	workDirs      []string
+	poolSize      int
+	processors    chan *cmdprocessor.CmdProcessor
+	allProcessors []*cmdprocessor.CmdProcessor
+	initMu        sync.Mutex
+	isInit        bool
+	pythonPath    string
+	scriptPath    string
 }
 
 func NewSpacyDetector() *spacyDetector {
@@ -81,6 +84,49 @@ func (u *spacyDetector) WithPoolSize(n int) *spacyDetector {
 	return u
 }
 
+// createSingleProcessor spawns and initializes one CmdProcessor instance.
+func (u *spacyDetector) createSingleProcessor() (*cmdprocessor.CmdProcessor, error) {
+	cp := cmdprocessor.NewCmdProcessor(u.pythonPath, u.scriptPath)
+
+	cp.SetSkipMethod(func(s string) (bool, error) {
+		var out pythonResponse
+		if err := json.Unmarshal([]byte(s), &out); err != nil {
+			return false, fmt.Errorf("unmarshal output (%s) in skip method from python script: %w", s, err)
+		}
+		switch out.Type {
+		case "log":
+			return true, nil
+		case "error":
+			return true, fmt.Errorf("error from python script: %s", out.Message)
+		case "output":
+			return false, nil
+		}
+		return true, nil
+	})
+
+	cp.SetWaitMethod(func(s string) (bool, error) {
+		var out pythonResponse
+		if err := json.Unmarshal([]byte(s), &out); err != nil {
+			return false, fmt.Errorf("unmarshal output (%s) in wait method from python script: %w", s, err)
+		}
+		switch out.Type {
+		case "log":
+			return out.Message != "Successfully loaded model", nil
+		case "error":
+			return false, fmt.Errorf("python script did not start: %s", out.Message)
+		case "output":
+			return false, fmt.Errorf("in wait mode we should not get output")
+		}
+		return true, nil
+	})
+
+	if err := cp.Start(context.TODO()); err != nil {
+		return nil, fmt.Errorf("start python script: %w", err)
+	}
+
+	return cp, nil
+}
+
 // Init initializes the spacyDetector process pool.
 // Idempotent and thread-safe: if called multiple times, only the first call creates the pool.
 func (u *spacyDetector) Init() error {
@@ -95,14 +141,16 @@ func (u *spacyDetector) Init() error {
 	if err != nil {
 		return fmt.Errorf("python 3 not found: %w", err)
 	}
+	u.pythonPath = python3
 
 	fileLocation, err := u.detectWorkingDir()
 	if err != nil {
 		return err
 	}
+	u.scriptPath = path.Join(fileLocation, spacyFileName)
 
-	scriptPath := path.Join(fileLocation, spacyFileName)
 	u.processors = make(chan *cmdprocessor.CmdProcessor, u.poolSize)
+	u.allProcessors = make([]*cmdprocessor.CmdProcessor, 0, u.poolSize)
 
 	type result struct {
 		cp  *cmdprocessor.CmdProcessor
@@ -112,54 +160,44 @@ func (u *spacyDetector) Init() error {
 
 	for i := 0; i < u.poolSize; i++ {
 		go func() {
-			cp := cmdprocessor.NewCmdProcessor(python3, scriptPath)
-
-			cp.SetSkipMethod(func(s string) (bool, error) {
-				var out pythonResponse
-				if err := json.Unmarshal([]byte(s), &out); err != nil {
-					return false, fmt.Errorf("unmarshal output (%s) in skip method from python script: %w", s, err)
-				}
-				switch out.Type {
-				case "log":
-					return true, nil
-				case "error":
-					return true, fmt.Errorf("error from python script: %s", out.Message)
-				case "output":
-					return false, nil
-				}
-				return true, nil
-			})
-
-			cp.SetWaitMethod(func(s string) (bool, error) {
-				var out pythonResponse
-				if err := json.Unmarshal([]byte(s), &out); err != nil {
-					return false, fmt.Errorf("unmarshal output (%s) in wait method from python script: %w", s, err)
-				}
-				switch out.Type {
-				case "log":
-					return out.Message != "Successfully loaded model", nil
-				case "error":
-					return false, fmt.Errorf("python script did not start: %s", out.Message)
-				case "output":
-					return false, fmt.Errorf("in wait mode we should not get output")
-				}
-				return true, nil
-			})
-
-			if err := cp.Start(context.TODO()); err != nil {
-				results <- result{err: fmt.Errorf("start python script: %w", err)}
+			cp, err := u.createSingleProcessor()
+			if err != nil {
+				results <- result{err: err}
 				return
 			}
 			results <- result{cp: cp}
 		}()
 	}
 
+	started := make([]*cmdprocessor.CmdProcessor, 0, u.poolSize)
+	var firstErr error
+
 	for i := 0; i < u.poolSize; i++ {
 		r := <-results
 		if r.err != nil {
-			return r.err
+			if firstErr == nil {
+				firstErr = r.err
+			}
+		} else {
+			started = append(started, r.cp)
 		}
-		u.processors <- r.cp
+	}
+
+	// If any worker failed during init, close all started processes to prevent leaks
+	if firstErr != nil {
+		for _, cp := range started {
+			if cp != nil {
+				_ = cp.Close()
+			}
+		}
+		close(u.processors)
+		u.processors = nil
+		return fmt.Errorf("failed to initialize spacy pool: %w", firstErr)
+	}
+
+	for _, cp := range started {
+		u.processors <- cp
+		u.allProcessors = append(u.allProcessors, cp)
 	}
 
 	u.isInit = true
@@ -171,22 +209,21 @@ func (u *spacyDetector) Close() error {
 	u.initMu.Lock()
 	defer u.initMu.Unlock()
 
-	if !u.isInit || u.processors == nil {
+	if !u.isInit {
 		return nil
 	}
 
-	for i := 0; i < u.poolSize; i++ {
-		select {
-		case cp := <-u.processors:
-			if cp != nil {
-				cp.Close()
-			}
-		default:
+	for _, cp := range u.allProcessors {
+		if cp != nil {
+			_ = cp.Close()
 		}
 	}
 
-	close(u.processors)
-	u.processors = nil
+	if u.processors != nil {
+		close(u.processors)
+		u.processors = nil
+	}
+	u.allProcessors = nil
 	u.isInit = false
 	return nil
 }
@@ -209,22 +246,70 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		}
 	}
 
-	if u.processors == nil {
+	u.initMu.Lock()
+	if !u.isInit || u.processors == nil {
+		u.initMu.Unlock()
 		return nil, fmt.Errorf("spacy detector not initialized")
 	}
+	procChan := u.processors
+	u.initMu.Unlock()
 
-	cp := <-u.processors
-	defer func() { u.processors <- cp }()
-
-	out, err := cp.Process(word)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process input: %v", err)
+	var cp *cmdprocessor.CmdProcessor
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case cp = <-procChan:
+		if cp == nil {
+			return nil, fmt.Errorf("acquired nil processor")
+		}
 	}
 
-	var resp pythonResponse
-	err = json.Unmarshal([]byte(out), &resp)
+	// Replace newlines with space to prevent PTY line protocol desynchronization
+	sanitizedWord := strings.ReplaceAll(strings.ReplaceAll(word, "\r", " "), "\n", " ")
+
+	out, err := cp.Process(sanitizedWord)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
+		// Process failed — close dead processor and attempt to replace it so pool stays healthy
+		_ = cp.Close()
+
+		if replacement, repErr := u.createSingleProcessor(); repErr == nil {
+			u.initMu.Lock()
+			if u.isInit && u.processors != nil {
+				// Replace in allProcessors tracking
+				for i, existing := range u.allProcessors {
+					if existing == cp {
+						u.allProcessors[i] = replacement
+						break
+					}
+				}
+				select {
+				case u.processors <- replacement:
+				default:
+				}
+			} else {
+				_ = replacement.Close()
+			}
+			u.initMu.Unlock()
+		}
+
+		return nil, fmt.Errorf("failed to process input: %w", err)
+	}
+
+	// Success — safely return processor back to pool channel
+	defer func() {
+		u.initMu.Lock()
+		defer u.initMu.Unlock()
+		if u.isInit && u.processors != nil {
+			select {
+			case u.processors <- cp:
+			default:
+			}
+		}
+	}()
+
+	var resp pythonResponse
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if resp.Data == nil || len(resp.Data.Entities) == 0 {

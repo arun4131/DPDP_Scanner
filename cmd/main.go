@@ -303,6 +303,7 @@ func runScan(adapter piiscanner.DBAdapter, host, database, runOption, excludeTab
 	}
 
 	scanner := piiscanner.NewDatabasePiiScanner(adapter, cnf)
+	defer scanner.Close()
 
 	var ctx context.Context
 	var cancel context.CancelFunc
@@ -315,7 +316,6 @@ func runScan(adapter piiscanner.DBAdapter, host, database, runOption, excludeTab
 	cancel()
 
 	if err != nil {
-		scanner.Close()
 		log.Printf("  [SKIP] Scan error: %v", err)
 		if ctx.Err() == context.DeadlineExceeded {
 			log.Printf("  Scan of %s stopped after the %s timeout — re-run with --no-timeout to let it finish without a time limit.", database, defaultScanTimeout)

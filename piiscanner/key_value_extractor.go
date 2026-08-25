@@ -2,9 +2,16 @@ package piiscanner
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"io"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 type KeyValuePair struct {
@@ -13,94 +20,269 @@ type KeyValuePair struct {
 }
 
 var (
-	jsonKVRegex = regexp.MustCompile(`"([^"]+)"\s*:\s*"?([^",{} \t\r\n]+)"?`)
-	xmlKVRegex  = regexp.MustCompile(`<([a-zA-Z0-9_-]+)[^>]*>([^<]+)</[a-zA-Z0-9_-]+>`)
-	textKVRegex = regexp.MustCompile(`(?i)\b([a-zA-Z0-9_-]{2,30})\s*[:=]\s*([^\s,;]{2,100})`)
+	// These expressions are intentionally fallbacks for malformed JSON-like and
+	// loose text. Valid structured input is handled by the standard parsers.
+	jsonQuotedKVRegex   = regexp.MustCompile(`"([^"\\]+)"\s*:\s*"([^"\\]+)"`)
+	jsonUnquotedKVRegex = regexp.MustCompile(`"([^"\\]+)"\s*:\s*([0-9a-zA-Z._-]+)`)
+	textKVRegex         = regexp.MustCompile(`(?i)\b([a-zA-Z0-9_-]{2,30})\s*[:=]\s*([^\s,;]{2,100})`)
 )
 
-// PreprocessAndExtractKV handles URL decoding, Base64 decoding, and key-value pair extraction
-// from structured blobs (JSON, XML, Key-Value, URL params, and Base64 tokens).
+type kvCollector struct {
+	pairs []KeyValuePair
+	seen  map[KeyValuePair]struct{}
+}
+
+func newKVCollector() *kvCollector {
+	return &kvCollector{seen: make(map[KeyValuePair]struct{})}
+}
+
+func (c *kvCollector) add(key, value string) {
+	pair := KeyValuePair{Key: strings.TrimSpace(key), Value: strings.TrimSpace(value)}
+	if pair.Key == "" || pair.Value == "" {
+		return
+	}
+	if _, exists := c.seen[pair]; exists {
+		return
+	}
+	c.seen[pair] = struct{}{}
+	c.pairs = append(c.pairs, pair)
+}
+
+// PreprocessAndExtractKV decodes a single URL/Base64 layer and extracts
+// key-value pairs from JSON, XML, URLs, query strings, and loose text.
+// Duplicate keys are preserved when their values differ.
 func PreprocessAndExtractKV(text string) (string, []KeyValuePair) {
-	processed := text
+	processed := strings.TrimSpace(text)
 
-	// 1. Handle URL-encoded strings (e.g. pan%3DABCDE1234F%26aadhaar%3D123456789012)
-	if strings.Contains(text, "%3D") || strings.Contains(text, "%3d") || strings.Contains(text, "%26") {
-		if unescaped, err := url.QueryUnescape(text); err == nil {
-			processed = unescaped
+	// Decode a blob whose separators themselves are URL encoded. Normal query
+	// strings are parsed before value decoding so an encoded '&' stays in its value.
+	lower := strings.ToLower(processed)
+	if strings.Contains(lower, "%3d") && !strings.Contains(processed, "=") {
+		if decoded, err := url.QueryUnescape(processed); err == nil {
+			processed = decoded
 		}
 	}
 
-	// 2. Handle Base64-encoded strings (e.g. eyJwYW4iOiJBQkNERTEyMzRGIn0=)
-	// Clean embedded newlines or spaces often injected by database formatting (e.g. \n or \r\n)
-	cleanBase64 := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(text, "\n", ""), "\r", ""), " ", "")
-	cleanBase64 = strings.TrimSpace(cleanBase64)
-	if strings.HasPrefix(cleanBase64, "eyJ") || (len(cleanBase64) >= 16 && len(cleanBase64)%4 == 0) {
-		if decodedBytes, err := base64.StdEncoding.DecodeString(cleanBase64); err == nil {
-			decodedStr := string(decodedBytes)
-			if len(decodedStr) > 0 && (strings.Contains(decodedStr, "{") || strings.Contains(decodedStr, ":") || strings.Contains(decodedStr, "=") || strings.Contains(decodedStr, "&")) {
-				processed = decodedStr
+	if decoded, ok := decodeStructuredBase64(processed); ok {
+		processed = decoded
+	}
+
+	collector := newKVCollector()
+	trimmed := strings.TrimSpace(processed)
+
+	jsonParsed := extractJSON(trimmed, collector)
+	xmlParsed := false
+	if !jsonParsed {
+		xmlParsed = extractXML(trimmed, collector)
+	}
+	queryParsed := extractQuery(trimmed, collector)
+
+	// Keep compatibility with imperfect JSON-like database blobs, but do not
+	// apply broad regexes to content already parsed successfully.
+	if !jsonParsed && !xmlParsed && !queryParsed {
+		extractJSONFallback(trimmed, collector)
+		if len(collector.pairs) == 0 {
+			extractTextFallback(trimmed, collector)
+		}
+	}
+
+	return processed, collector.pairs
+}
+
+func decodeStructuredBase64(text string) (string, bool) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" || strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") || strings.HasPrefix(trimmed, "<") {
+		return "", false
+	}
+
+	clean := strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, trimmed)
+	if len(clean) < 8 {
+		return "", false
+	}
+
+	encodings := []*base64.Encoding{
+		base64.StdEncoding,
+		base64.RawStdEncoding,
+		base64.URLEncoding,
+		base64.RawURLEncoding,
+	}
+	for _, encoding := range encodings {
+		decoded, err := encoding.DecodeString(clean)
+		if err != nil || !utf8.Valid(decoded) || !mostlyPrintable(decoded) {
+			continue
+		}
+		candidate := strings.TrimSpace(string(decoded))
+		if looksStructured(candidate) {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
+func mostlyPrintable(value []byte) bool {
+	if len(value) == 0 {
+		return false
+	}
+	printable := 0
+	for _, r := range string(value) {
+		if unicode.IsPrint(r) || unicode.IsSpace(r) {
+			printable++
+		}
+	}
+	return float64(printable)/float64(utf8.RuneCount(value)) >= 0.90
+}
+
+func looksStructured(value string) bool {
+	if strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[") || strings.HasPrefix(value, "<") {
+		return true
+	}
+	return strings.Contains(value, "=") && (strings.Contains(value, "&") || textKVRegex.MatchString(value))
+}
+
+func extractJSON(text string, collector *kvCollector) bool {
+	if !strings.HasPrefix(text, "{") && !strings.HasPrefix(text, "[") {
+		return false
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return false
+	}
+	// Reject trailing non-whitespace content.
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return false
+	}
+	flattenJSON("", value, collector)
+	return true
+}
+
+func flattenJSON(parentKey string, value any, collector *kvCollector) {
+	switch typed := value.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			flattenJSON(key, typed[key], collector)
+		}
+	case []any:
+		for _, item := range typed {
+			flattenJSON(parentKey, item, collector)
+		}
+	case nil:
+		return
+	case string:
+		collector.add(parentKey, typed)
+	case json.Number:
+		collector.add(parentKey, typed.String())
+	case bool:
+		collector.add(parentKey, fmt.Sprint(typed))
+	}
+}
+
+func extractXML(text string, collector *kvCollector) bool {
+	if !strings.HasPrefix(text, "<") {
+		return false
+	}
+
+	type frame struct {
+		name     string
+		text     strings.Builder
+		hasChild bool
+	}
+
+	decoder := xml.NewDecoder(strings.NewReader(text))
+	stack := make([]*frame, 0)
+	temporary := newKVCollector()
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return false
+		}
+		switch typed := token.(type) {
+		case xml.StartElement:
+			if len(stack) > 0 {
+				stack[len(stack)-1].hasChild = true
+			}
+			stack = append(stack, &frame{name: typed.Name.Local})
+		case xml.CharData:
+			if len(stack) > 0 {
+				stack[len(stack)-1].text.Write([]byte(typed))
+			}
+		case xml.EndElement:
+			if len(stack) == 0 || stack[len(stack)-1].name != typed.Name.Local {
+				return false
+			}
+			current := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if !current.hasChild {
+				temporary.add(current.name, current.text.String())
 			}
 		}
 	}
+	if len(stack) != 0 {
+		return false
+	}
+	for _, pair := range temporary.pairs {
+		collector.add(pair.Key, pair.Value)
+	}
+	return true
+}
 
-	kvMap := make(map[string]string)
+func extractQuery(text string, collector *kvCollector) bool {
+	rawQuery := ""
+	if parsed, err := url.Parse(text); err == nil && parsed.RawQuery != "" {
+		rawQuery = parsed.RawQuery
+	} else if strings.Contains(text, "=") && !strings.ContainsAny(text, "{}<>\n\r") {
+		rawQuery = strings.TrimPrefix(text, "?")
+	}
+	if rawQuery == "" {
+		return false
+	}
 
-	// Extract URL Query parameters (e.g. pan=ABCDE1234F&aadhaar=123456789012)
-	if strings.Contains(processed, "=") && strings.Contains(processed, "&") {
-		parts := strings.Split(processed, "&")
-		for _, p := range parts {
-			if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
-				k, v := strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1])
-				if k != "" && v != "" {
-					kvMap[k] = v
-				}
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil || len(values) == 0 {
+		return false
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		for _, value := range values[key] {
+			collector.add(key, value)
+		}
+	}
+	return len(collector.pairs) > 0
+}
+
+func extractJSONFallback(text string, collector *kvCollector) {
+	for _, rx := range []*regexp.Regexp{jsonQuotedKVRegex, jsonUnquotedKVRegex} {
+		for _, match := range rx.FindAllStringSubmatch(text, -1) {
+			if len(match) >= 3 {
+				collector.add(match[1], match[2])
 			}
 		}
 	}
+}
 
-	// Extract JSON key-value pairs
-	if matches := jsonKVRegex.FindAllStringSubmatch(processed, -1); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				k, v := strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
-				if k != "" && v != "" {
-					kvMap[k] = v
-				}
-			}
+func extractTextFallback(text string, collector *kvCollector) {
+	for _, match := range textKVRegex.FindAllStringSubmatch(text, -1) {
+		if len(match) >= 3 {
+			collector.add(match[1], strings.Trim(match[2], `"'{}[]()`))
 		}
 	}
-
-	// Extract XML key-value pairs
-	if matches := xmlKVRegex.FindAllStringSubmatch(processed, -1); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				k, v := strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
-				if k != "" && v != "" {
-					kvMap[k] = v
-				}
-			}
-		}
-	}
-
-	// Extract Text key-value pairs (key: value or key=value)
-	if matches := textKVRegex.FindAllStringSubmatch(processed, -1); len(matches) > 0 {
-		for _, m := range matches {
-			if len(m) >= 3 {
-				k, v := strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
-				if k != "" && v != "" {
-					// Avoid overwriting clean values with un-split query string
-					if _, exists := kvMap[k]; !exists {
-						kvMap[k] = v
-					}
-				}
-			}
-		}
-	}
-
-	var kvList []KeyValuePair
-	for k, v := range kvMap {
-		kvList = append(kvList, KeyValuePair{Key: k, Value: v})
-	}
-
-	return processed, kvList
 }

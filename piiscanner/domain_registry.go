@@ -74,15 +74,3 @@ var EntityDomainMap = map[PIILabel]Domain{
 	PIILabel_OAuthToken: DomainDigital,
 	PIILabel_Location:   DomainDigital,
 }
-
-// Phase3Entities defines bounded fixed-length fallback IDs subjected to Phase 3 domain gating
-var Phase3Entities = map[PIILabel]bool{
-	PIILabel_CVV:            true,
-	PIILabel_ChequeNumber:   true,
-	PIILabel_PassportNumber: true,
-	PIILabel_MICRCode:       true,
-	PIILabel_VoterID:        true,
-	PIILabel_ABHANumber:     true,
-	PIILabel_UAN:            true,
-	PIILabel_Location:       true,
-}

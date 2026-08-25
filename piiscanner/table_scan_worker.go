@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 )
+
+const detectionChunkSize = 512
 
 type ScanInput struct {
 	Tablename  string
@@ -118,21 +122,24 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		if scanVal == "" {
 			scanVal = data.Value
 		}
+		scanSegments := detectionSegments(scanVal, detectionChunkSize)
 
 		for _, detector := range t.detectors {
-			// Collect labels from raw (or preprocessed) blob value
-			rawLabels, err := detector.Detect(ctx, scanVal, columnContext)
-			if err != nil {
-				return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
+			// Merge labels across every raw-text segment and extracted KV value. The
+			// map lives for the complete database cell, so an entity is counted at
+			// most once even when it occurs in several chunks.
+			merged := make(map[PIILabel]PiiLabelWithWeight)
+			for _, segment := range scanSegments {
+				rawLabels, err := detector.Detect(ctx, segment, columnContext)
+				if err != nil {
+					return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
+				}
+				for _, lbl := range rawLabels {
+					lbl.ContextMatched = columnContext[lbl.PIILabel]
+					mergeCellLabel(merged, lbl)
+				}
 			}
 
-			// Merge with labels from individual extracted KV pair values.
-			// Use a map keyed by PIILabel so each entity is counted only ONCE per row,
-			// keeping the highest-weight occurrence (raw vs KV pair).
-			merged := make(map[PIILabel]PiiLabelWithWeight)
-			for _, lbl := range rawLabels {
-				merged[lbl.PIILabel] = lbl
-			}
 			for _, kv := range kvPairs {
 				kvCtx := t.getColumnContext(ctx, kv.Key)
 				kvLabels, err := detector.Detect(ctx, kv.Value, kvCtx)
@@ -140,9 +147,11 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 					continue
 				}
 				for _, lbl := range kvLabels {
-					if existing, ok := merged[lbl.PIILabel]; !ok || lbl.Weight > existing.Weight {
-						merged[lbl.PIILabel] = lbl
+					if kvCtx[lbl.PIILabel] {
+						lbl.Weight = 1.0
+						lbl.ContextMatched = true
 					}
+					mergeCellLabel(merged, lbl)
 				}
 			}
 
@@ -163,4 +172,41 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 	}
 
 	return nil
+}
+
+// detectionSegments limits only raw detector input. Structured extraction has
+// already consumed the complete cell before this function is called.
+func detectionSegments(value string, maxSize int) []string {
+	if value == "" {
+		return nil
+	}
+	if len(value) < maxSize {
+		return []string{value}
+	}
+
+	chunks := utils.Chunks(value, maxSize)
+	segments := make([]string, 0, len(chunks))
+	for _, chunk := range chunks {
+		if chunk != "" {
+			segments = append(segments, chunk)
+		}
+	}
+	if len(segments) == 0 {
+		return []string{value}
+	}
+	return segments
+}
+
+func mergeCellLabel(merged map[PIILabel]PiiLabelWithWeight, label PiiLabelWithWeight) {
+	existing, found := merged[label.PIILabel]
+	if !found || label.Weight > existing.Weight {
+		// Do not lose trusted provenance carried by a lower-weight occurrence.
+		label.ContextMatched = label.ContextMatched || existing.ContextMatched
+		merged[label.PIILabel] = label
+		return
+	}
+	if label.ContextMatched && !existing.ContextMatched {
+		existing.ContextMatched = true
+		merged[label.PIILabel] = existing
+	}
 }

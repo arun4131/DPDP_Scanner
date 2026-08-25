@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -22,8 +20,9 @@ type PiiData struct {
 }
 
 type WeightWithCount struct {
-	Weight float64
-	Count  int
+	Weight         float64
+	Count          int
+	ContextMatched bool
 }
 
 type PiiLabelMap map[string] /* detector name */ map[PIILabel]WeightWithCount
@@ -32,13 +31,14 @@ func NewPiiLabelMap() PiiLabelMap {
 	return make(map[string]map[PIILabel]WeightWithCount)
 }
 
-func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64) {
+func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64, contextMatched bool) {
 	if _, ok := p[detector]; !ok {
 		p[detector] = make(map[PIILabel]WeightWithCount)
 	}
 	w := p[detector][label]
 	w.Weight += weight
 	w.Count++
+	w.ContextMatched = w.ContextMatched || contextMatched
 
 	p[detector][label] = w
 }
@@ -53,20 +53,17 @@ type TableScanManager struct {
 
 	inputChan  chan ScanInput
 	outputChan chan ScanOutput
+	outputDone chan struct{}
 	errorChan  chan error
 
 	workerGroup errgroup.Group
 
 	valueCount map[string]map[string]int
-
-	UnrecognizedValues map[string]map[string][]string
-	unrecognizedMu     sync.Mutex
 }
 
 func NewTableScanManager() *TableScanManager {
 	return &TableScanManager{
-		valueCount:         make(map[string]map[string]int),
-		UnrecognizedValues: make(map[string]map[string][]string),
+		valueCount: make(map[string]map[string]int),
 	}
 }
 
@@ -91,6 +88,7 @@ func (t *TableScanManager) Start(ctx context.Context, n int) error {
 	}
 
 	t.outputChan = make(chan ScanOutput)
+	t.outputDone = make(chan struct{})
 	t.output = make(map[string]TableScannerOutput)
 	go t.OutputRunner()
 
@@ -155,6 +153,7 @@ func (t *TableScanManager) Output() (_ map[string]TableScannerOutput, err error)
 	}
 
 	close(t.outputChan)
+	<-t.outputDone
 
 	return t.output, nil
 }
@@ -172,7 +171,6 @@ func (t *TableScanManager) PushValue(input ScanInput) (err error) {
 
 	v := strings.TrimSpace(input.Value)
 	v = strings.ReplaceAll(v, "\r", "")
-	v = strings.ReplaceAll(v, "{", "")
 	if v == "" {
 		return nil
 	}
@@ -185,47 +183,11 @@ func (t *TableScanManager) PushValue(input ScanInput) (err error) {
 
 	tableMap[input.ColumnName]++
 
-	// Buffer sample values for unrecognized column fallback scan (max 100 values per column)
-	t.unrecognizedMu.Lock()
-	if t.UnrecognizedValues[input.Tablename] == nil {
-		t.UnrecognizedValues[input.Tablename] = make(map[string][]string)
-	}
-	if len(t.UnrecognizedValues[input.Tablename][input.ColumnName]) < 100 {
-		t.UnrecognizedValues[input.Tablename][input.ColumnName] = append(t.UnrecognizedValues[input.Tablename][input.ColumnName], v)
-	}
-	t.unrecognizedMu.Unlock()
-
-	newInput := func(s string) ScanInput {
-		i := input
-		i.Value = s
-		return i
-	}
-
-	lines := strings.Split(v, "\n")
-
-	for _, line := range lines {
-
-		if len(line) < 512 {
-			i := newInput(line)
-			err := t.pushDevidedInput(i)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		chunks := utils.Chunks(line, 512)
-		for _, chunk := range chunks {
-			i := newInput(chunk)
-			err = t.pushDevidedInput(i)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	// fmt.Println("Pushed value", input.Value, "to input channel")
-
-	return nil
+	// Preserve the database cell as one scan unit. Structured preprocessing and
+	// optional raw-text chunking happen inside one worker job so the worker can
+	// deduplicate all detections before emitting a result.
+	input.Value = v
+	return t.pushDevidedInput(input)
 }
 
 func (t *TableScanManager) pushDevidedInput(input ScanInput) (err error) {
@@ -286,6 +248,7 @@ func (t *TableScanManager) PushColumn(ctx context.Context, input ScanInput) (err
 
 func (t *TableScanManager) OutputRunner() {
 	defer func() {
+		close(t.outputDone)
 		if r := recover(); r != nil {
 			fmt.Println("Recovered OutputRunner", r)
 		}
@@ -320,7 +283,7 @@ func (t *TableScanManager) OutputRunner() {
 		for _, label := range output.Labels {
 			// csvFile.Write([]string{output.Tablename, output.ColumnName, output.Value, // nolint:errcheck
 			// 	output.Type, string(label.PIILabel), fmt.Sprintf("%f", label.Weight)})
-			m.Add(output.Detector, label.PIILabel, label.Weight)
+			m.Add(output.Detector, label.PIILabel, label.Weight, label.ContextMatched)
 		}
 	}
 	// csvFile.Flush()

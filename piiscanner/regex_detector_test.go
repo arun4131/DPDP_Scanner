@@ -81,15 +81,15 @@ func TestRegexDetector(t *testing.T) {
 		{
 			name:     "context-required value with matching context",
 			detector: valueDetector,
-			input:    "123456",
-			context:  ColumnContext{PIILabel_ChequeNumber: true},
-			want:     PIILabel_ChequeNumber,
+			input:    "9876543210123",
+			context:  ColumnContext{PIILabel_BankAccountNumber: true},
+			want:     PIILabel_BankAccountNumber,
 		},
 		{
 			name:     "context-required value without context",
 			detector: valueDetector,
-			input:    "123456",
-			notWant:  PIILabel_ChequeNumber,
+			input:    "9876543210123",
+			notWant:  PIILabel_BankAccountNumber,
 		},
 		{
 			name:     "India region includes PAN",

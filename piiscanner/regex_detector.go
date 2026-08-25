@@ -596,7 +596,7 @@ func (r *regexColumnDetector) Init() error {
 			},
 			{
 				// Medium confidence - industry-agnostic account terms; need value corroboration
-				Regexp: regexp.MustCompile(`(?i)\b(account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|from[\s_-]?account|to[\s_-]?account|user[\s_-]?account|user[\s_-]?account[\s_-]?number|vendor[\s_-]?account|vendor[\s_-]?account[\s_-]?number|merchant[\s_-]?account|merchant[\s_-]?account[\s_-]?number|supplier[\s_-]?account|supplier[\s_-]?account[\s_-]?number|claim[\s_-]?account|claim[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(account|account[\s_-]?number|account[\s_-]?num|account[\s_-]?no|account[\s_-]?id|account[\s_-]?identifier|account[\s_-]?details|account[\s_-]?value|account[\s_-]?code|acct|acct[\s_-]?number|acct[\s_-]?num|acct[\s_-]?no|acct[\s_-]?id|acct[\s_-]?identifier|acnt[\s_-]?number|acnt[\s_-]?num|acnt[\s_-]?no|acc|acc[\s_-]?number|acc[\s_-]?num|acc[\s_-]?no|from[\s_-]?account|to[\s_-]?account|user[\s_-]?account|user[\s_-]?account[\s_-]?number|vendor[\s_-]?account|vendor[\s_-]?account[\s_-]?number|merchant[\s_-]?account|merchant[\s_-]?account[\s_-]?number|supplier[\s_-]?account|supplier[\s_-]?account[\s_-]?number|claim[\s_-]?account|claim[\s_-]?account[\s_-]?number|customer[\s_-]?account|customer[\s_-]?account[\s_-]?number)\b`),
 				Weight: 0.5,
 			},
 			{
@@ -1130,10 +1130,9 @@ func (r *regexValueDetector) Init() error {
 			{
 				// Indian cheque numbers are typically 6 digits.
 				// Require column context to avoid matching OTPs, PINs, invoice IDs, etc.
-				Regexp:                regexp.MustCompile(`^\d{6}$`),
-				Weight:                0.6,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`^\d{6}$`),
+				Weight: 0.6,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_CIFNumber: {
@@ -1143,10 +1142,9 @@ func (r *regexValueDetector) Init() error {
 				Region: RegionIndia,
 			},
 			{
-				Regexp:                regexp.MustCompile(`(?i)\b\d{8,11}\b`),
-				Weight:                0.6,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b\d{8,11}\b`),
+				Weight: 0.6,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_LoanAccountNumber: {
@@ -1185,17 +1183,15 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_CVV: {
 			{
-				Regexp:                regexp.MustCompile(`^[0-9]{3,4}$`),
-				Weight:                0.9,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`^[0-9]{3,4}$`),
+				Weight: 0.9,
 			},
 		},
 		PIILabel_TAN: {
 			{
-				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{4}[0-9]{5}[A-Z]\b`),
-				Weight:                0.9,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{4}[0-9]{5}[A-Z]\b`),
+				Weight: 0.9,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_CIN: {
@@ -1214,20 +1210,15 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// New Sarathi format: state(2) + district(2) + serial(11) = 15 chars
-				Regexp:                regexp.MustCompile(`(?i)\b((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?[0-9]{11})\b`),
-				Weight:                0.9,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b((?:ap|ar|as|br|cg|ch|dl|ga|gj|hp|hr|jh|jk|ka|kl|la|ld|mh|ml|mn|mp|mz|nl|od|pb|py|rj|sk|tg|tn|tr|ts|uk|up|wb|an|dd|dn)[\s_-]?[0-9]{2}[\s_-]?[0-9]{11})\b`),
+				Weight: 0.9,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_Gender: {
 			{
 				Regexp: regexp.MustCompile(`(?i)^(male|female|girl|boy|other|prefer[\s-_]?not[\s-_]?to[\s-_]?say|prefer[\s-_]?not[\s-_]?to[\s-_]?disclose|not[\s-_]?specified|transgender|non[\s-_]?binary)$`),
 				Weight: 1.0,
-			},
-			{
-				Regexp: regexp.MustCompile(`(?i)^.*(gender).*$`),
-				Weight: 0.5,
 			},
 			{
 				Regexp: regexp.MustCompile(`(?i)^(m|f|n)$`),
@@ -1250,10 +1241,9 @@ func (r *regexValueDetector) Init() error {
 			},
 			{
 				// India mobile - 91 prefix
-				Regexp:                regexp.MustCompile(`\b91[6-9][0-9]{9}\b`),
-				Weight:                1.0,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`\b91[6-9][0-9]{9}\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
 			},
 			{
 				// India mobile - +91 prefix
@@ -1286,10 +1276,9 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_VoterID: {
 			{
-				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{3}\d{7}\b`),
-				Weight:                0.8,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{3}\d{7}\b`),
+				Weight: 0.8,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_IFSC: {
@@ -1303,26 +1292,23 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_MICRCode: {
 			{
 				// MICR: 9-digit City(3)+Bank(3)+Branch(3). Column context required.
-				Regexp:                regexp.MustCompile(`^\d{9}$`),
-				Weight:                0.7,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`^\d{9}$`),
+				Weight: 0.7,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_PassportNumber: {
 			{
 				// 1 letter + 7 digits
-				Regexp:                regexp.MustCompile(`(?i)\b[A-Z][0-9]{7}\b`),
-				Weight:                1.0,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z][0-9]{7}\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
 			},
 			{
 				// 2 letters + 6 digits
-				Regexp:                regexp.MustCompile(`(?i)\b[A-Z]{2}[0-9]{6}\b`),
-				Weight:                1.0,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)\b[A-Z]{2}[0-9]{6}\b`),
+				Weight: 1.0,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_ABHANumber: {
@@ -1347,10 +1333,9 @@ func (r *regexValueDetector) Init() error {
 		},
 		PIILabel_UAN: {
 			{
-				Regexp:                regexp.MustCompile(`\b[1-9][0-9]{11}\b`),
-				Weight:                0.95,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`\b[1-9][0-9]{11}\b`),
+				Weight: 0.95,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_EPFMemberID: {
@@ -1487,10 +1472,9 @@ func (r *regexValueDetector) Init() error {
 		PIILabel_RationCard: {
 			{
 				// Ration card: state code + alphanumeric
-				Regexp:                regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
-				Weight:                0.7,
-				Region:                RegionIndia,
-				RequiresColumnContext: true,
+				Regexp: regexp.MustCompile(`(?i)^(AP|AR|AS|BR|CG|CH|DL|GA|GJ|HP|HR|JH|JK|KA|KL|LA|MH|ML|MN|MP|MZ|NL|OD|PB|PY|RJ|SK|TN|TR|TS|UK|UP|WB|AN|DD|DN)[-/]?\d{10,15}$`),
+				Weight: 0.7,
+				Region: RegionIndia,
 			},
 		},
 		PIILabel_SEBIRegistration: {

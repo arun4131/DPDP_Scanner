@@ -3,6 +3,7 @@ package piiscanner
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/klouddb/dpdpa_pii_db_scanner/pkg/utils"
@@ -98,24 +99,14 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		// Determine column context once per column name using column detector
 		columnContext := t.getColumnContext(ctx, data.ColumnName)
 
-		// Preprocess value (URL/Base64 decode) and extract internal key-value pairs
-		processedValue, kvPairs := PreprocessAndExtractKV(data.Value)
-
-		// Merge internal key context if KV pairs exist (e.g. "account", "ifsc", "pan", "aadhaar")
-		if len(kvPairs) > 0 {
-			mergedContext := make(ColumnContext)
-			for label, enabled := range columnContext {
-				mergedContext[label] = enabled
-			}
-			for _, kv := range kvPairs {
-				internalCtx := t.getColumnContext(ctx, kv.Key)
-				for label, enabled := range internalCtx {
-					if enabled {
-						mergedContext[label] = true
-					}
-				}
-			}
-			columnContext = mergedContext
+		// A recognized physical column is a normal scalar field. Do not run its
+		// value through loose key-value extraction: scalar formats such as MAC,
+		// IPv6, and timestamps legitimately contain ':' and can look like key/value
+		// text. Only unmatched/container columns enter document preprocessing.
+		processedValue := data.Value
+		var kvPairs []KeyValuePair
+		if len(columnContext) == 0 {
+			processedValue, kvPairs = PreprocessAndExtractKV(data.Value)
 		}
 
 		scanVal := processedValue
@@ -125,33 +116,30 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		scanSegments := detectionSegments(scanVal, detectionChunkSize)
 
 		for _, detector := range t.detectors {
-			// Merge labels across every raw-text segment and extracted KV value. The
-			// map lives for the complete database cell, so an entity is counted at
-			// most once even when it occurs in several chunks.
+			// Preserve candidate provenance until collisions for the same value have
+			// been resolved. Structured values are scanned one extracted field at a
+			// time; unstructured values are resolved by overlapping match positions.
 			merged := make(map[PIILabel]PiiLabelWithWeight)
-			for _, segment := range scanSegments {
-				rawLabels, err := detector.Detect(ctx, segment, columnContext)
-				if err != nil {
-					return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
-				}
-				for _, lbl := range rawLabels {
-					lbl.ContextMatched = columnContext[lbl.PIILabel]
-					mergeCellLabel(merged, lbl)
-				}
-			}
-
-			for _, kv := range kvPairs {
-				kvCtx := t.getColumnContext(ctx, kv.Key)
-				kvLabels, err := detector.Detect(ctx, kv.Value, kvCtx)
-				if err != nil {
-					continue
-				}
-				for _, lbl := range kvLabels {
-					if kvCtx[lbl.PIILabel] {
-						lbl.Weight = 1.0
-						lbl.ContextMatched = true
+			if len(kvPairs) > 0 {
+				for _, kv := range kvPairs {
+					kvCtx := t.getColumnContext(ctx, kv.Key)
+					labels, err := detectLogicalValue(ctx, detector, kv.Value, kvCtx)
+					if err != nil {
+						continue
 					}
-					mergeCellLabel(merged, lbl)
+					for _, label := range labels {
+						mergeCellLabel(merged, label)
+					}
+				}
+			} else {
+				for _, segment := range scanSegments {
+					labels, err := detectLogicalValue(ctx, detector, segment, columnContext)
+					if err != nil {
+						return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
+					}
+					for _, label := range labels {
+						mergeCellLabel(merged, label)
+					}
 				}
 			}
 
@@ -172,6 +160,96 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 	}
 
 	return nil
+}
+
+// detectLogicalValue resolves only candidates that refer to the same matched
+// value. Non-overlapping matches are independent and are all retained.
+func detectLogicalValue(ctx context.Context, detector Detector, value string, columnContext ColumnContext) ([]PiiLabelWithWeight, error) {
+	labels, err := detector.Detect(ctx, value, columnContext)
+	if err != nil {
+		return nil, err
+	}
+	for index := range labels {
+		if columnContext[labels[index].PIILabel] {
+			labels[index].Weight = 1.0
+			labels[index].ContextMatched = true
+		}
+	}
+	return resolveOccurrenceConflicts(labels), nil
+}
+
+// resolveOccurrenceConflicts forms connected groups of overlapping match
+// ranges. Each group represents one physical value and produces one winner.
+// Candidates without position information remain unresolved for the existing
+// column-level resolver.
+func resolveOccurrenceConflicts(labels []PiiLabelWithWeight) []PiiLabelWithWeight {
+	if len(labels) < 2 {
+		if len(labels) == 1 && labels[0].HasMatchPosition {
+			labels[0].ProvenanceResolved = true
+		}
+		return labels
+	}
+
+	positioned := make([]PiiLabelWithWeight, 0, len(labels))
+	resolved := make([]PiiLabelWithWeight, 0, len(labels))
+	for _, label := range labels {
+		if label.HasMatchPosition && label.MatchEnd > label.MatchStart {
+			positioned = append(positioned, label)
+			continue
+		}
+		resolved = append(resolved, label)
+	}
+
+	sort.Slice(positioned, func(i, j int) bool {
+		if positioned[i].MatchStart != positioned[j].MatchStart {
+			return positioned[i].MatchStart < positioned[j].MatchStart
+		}
+		if positioned[i].MatchEnd != positioned[j].MatchEnd {
+			return positioned[i].MatchEnd > positioned[j].MatchEnd
+		}
+		return positioned[i].PIILabel < positioned[j].PIILabel
+	})
+
+	for start := 0; start < len(positioned); {
+		end := start + 1
+		groupEnd := positioned[start].MatchEnd
+		for end < len(positioned) && positioned[end].MatchStart < groupEnd {
+			if positioned[end].MatchEnd > groupEnd {
+				groupEnd = positioned[end].MatchEnd
+			}
+			end++
+		}
+
+		winner := positioned[start]
+		for index := start + 1; index < end; index++ {
+			if strongerOccurrenceCandidate(positioned[index], winner) {
+				winner = positioned[index]
+			}
+		}
+		winner.ProvenanceResolved = true
+		resolved = append(resolved, winner)
+		start = end
+	}
+
+	return resolved
+}
+
+func strongerOccurrenceCandidate(candidate, current PiiLabelWithWeight) bool {
+	if candidate.ContextMatched != current.ContextMatched {
+		return candidate.ContextMatched
+	}
+	candidateConfidence, _ := getConfidenceLabel(candidate.Weight)
+	currentConfidence, _ := getConfidenceLabel(current.Weight)
+	if confidenceRank(candidateConfidence) != confidenceRank(currentConfidence) {
+		return confidenceRank(candidateConfidence) > confidenceRank(currentConfidence)
+	}
+	if TierRank(GetEntityTier(candidate.PIILabel)) != TierRank(GetEntityTier(current.PIILabel)) {
+		return TierRank(GetEntityTier(candidate.PIILabel)) > TierRank(GetEntityTier(current.PIILabel))
+	}
+	if candidate.Weight != current.Weight {
+		return candidate.Weight > current.Weight
+	}
+	return candidate.PIILabel < current.PIILabel
 }
 
 // detectionSegments limits only raw detector input. Structured extraction has
@@ -202,11 +280,13 @@ func mergeCellLabel(merged map[PIILabel]PiiLabelWithWeight, label PiiLabelWithWe
 	if !found || label.Weight > existing.Weight {
 		// Do not lose trusted provenance carried by a lower-weight occurrence.
 		label.ContextMatched = label.ContextMatched || existing.ContextMatched
+		label.ProvenanceResolved = label.ProvenanceResolved || existing.ProvenanceResolved
 		merged[label.PIILabel] = label
 		return
 	}
 	if label.ContextMatched && !existing.ContextMatched {
 		existing.ContextMatched = true
-		merged[label.PIILabel] = existing
 	}
+	existing.ProvenanceResolved = existing.ProvenanceResolved || label.ProvenanceResolved
+	merged[label.PIILabel] = existing
 }

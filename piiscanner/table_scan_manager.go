@@ -20,9 +20,10 @@ type PiiData struct {
 }
 
 type WeightWithCount struct {
-	Weight         float64
-	Count          int
-	ContextMatched bool
+	Weight             float64
+	Count              int
+	ContextMatched     bool
+	ProvenanceResolved bool
 }
 
 type PiiLabelMap map[string] /* detector name */ map[PIILabel]WeightWithCount
@@ -31,7 +32,7 @@ func NewPiiLabelMap() PiiLabelMap {
 	return make(map[string]map[PIILabel]WeightWithCount)
 }
 
-func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64, contextMatched bool) {
+func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64, contextMatched, provenanceResolved bool) {
 	if _, ok := p[detector]; !ok {
 		p[detector] = make(map[PIILabel]WeightWithCount)
 	}
@@ -39,6 +40,7 @@ func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64, contex
 	w.Weight += weight
 	w.Count++
 	w.ContextMatched = w.ContextMatched || contextMatched
+	w.ProvenanceResolved = w.ProvenanceResolved || provenanceResolved
 
 	p[detector][label] = w
 }
@@ -275,15 +277,16 @@ func (t *TableScanManager) OutputRunner() {
 			}
 		}
 
-		m := t.output[output.Tablename].PiiDataMap[output.ColumnName].ValueMap
+		piiData := t.output[output.Tablename].PiiDataMap[output.ColumnName]
+		m := piiData.ValueMap
 		if output.Type == "column" {
-			m = t.output[output.Tablename].PiiDataMap[output.ColumnName].ColumnMap
+			m = piiData.ColumnMap
 		}
 
 		for _, label := range output.Labels {
 			// csvFile.Write([]string{output.Tablename, output.ColumnName, output.Value, // nolint:errcheck
 			// 	output.Type, string(label.PIILabel), fmt.Sprintf("%f", label.Weight)})
-			m.Add(output.Detector, label.PIILabel, label.Weight, label.ContextMatched)
+			m.Add(output.Detector, label.PIILabel, label.Weight, label.ContextMatched, label.ProvenanceResolved)
 		}
 	}
 	// csvFile.Flush()

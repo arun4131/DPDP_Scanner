@@ -335,16 +335,17 @@ func (o *DatabasePIIScanOutput) HasFindings() bool {
 }
 
 type PIIDataWithWeightString struct {
-	Label            PIILabel
-	Confidence       string
-	ConfidenceIcon   string
-	Weight           float64
-	Tier             EntityTier // <--- Added during conflict resolver
-	ContextMatched   bool       `json:"-"`
-	DetectorType     DetectorType
-	DetectorName     string
-	ScanedValueCount int
-	MatchedCount     int
+	Label              PIILabel
+	Confidence         string
+	ConfidenceIcon     string
+	Weight             float64
+	Tier               EntityTier // <--- Added during conflict resolver
+	ContextMatched     bool       `json:"-"`
+	ProvenanceResolved bool       `json:"-"`
+	DetectorType       DetectorType
+	DetectorName       string
+	ScanedValueCount   int
+	MatchedCount       int
 }
 
 func NewPIIDataWithWeightString(label PIILabel, Weight float64, detectorType DetectorType, detectorName string) *PIIDataWithWeightString {
@@ -443,7 +444,7 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 					}
 
 					// Unrecognized Column Name Filter:
-					if !hasColumnMatch && count > 0 {
+					if !hasColumnMatch && count > 0 && !pii.ContextMatched {
 						density := float64(pii.Count) / float64(count)
 						if density < densityThreshold {
 							continue
@@ -459,6 +460,7 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 
 					piiDataWithWeight := NewPIIDataWithWeightString(label, finalWeight, DetectorType_ValueDetector, detector)
 					piiDataWithWeight.ContextMatched = pii.ContextMatched
+					piiDataWithWeight.ProvenanceResolved = pii.ProvenanceResolved
 					piiDataWithWeight.SetScanedValueAndMatchCount(pii.Count, count)
 					output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)
 				}

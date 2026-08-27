@@ -49,6 +49,18 @@ func TestRegexDetector(t *testing.T) {
 			want:     PIILabel_AdharcardNumber,
 		},
 		{
+			name:     "bare EPF document key",
+			detector: columnDetector,
+			input:    "epf",
+			want:     PIILabel_EPFMemberID,
+		},
+		{
+			name:     "bare vehicle document key",
+			detector: columnDetector,
+			input:    "vehicle",
+			want:     PIILabel_VehicleNumber,
+		},
+		{
 			name:     "email value",
 			detector: valueDetector,
 			input:    "alice@example.com",

@@ -21,7 +21,15 @@ try:
             doc = nlp(i)
             print_log_output("output", "Successfully processed text", {
                 "text": i,
-                "entities": [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
+                "entities": [
+                    {
+                        "text": ent.text,
+                        "label": ent.label_,
+                        "start": ent.start_char,
+                        "end": ent.end_char,
+                    }
+                    for ent in doc.ents
+                ]
             })
         except ImportError:
             print_log_output("error", "Failed to import required libraries", None)

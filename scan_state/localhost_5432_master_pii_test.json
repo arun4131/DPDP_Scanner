@@ -1,0 +1,1942 @@
+{
+  "host": "localhost",
+  "database": "master_pii_test",
+  "engine": "postgres",
+  "last_scanned": "2026-08-25T17:30:31.249943+05:30",
+  "tables": {
+    "public.bank_accounts": {
+      "columns": [
+        "person_id",
+        "account_number",
+        "ifsc_code",
+        "bank_name",
+        "bank_account_id",
+        "micr_code",
+        "cif_number",
+        "account_metadata"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "account_metadata": [
+          {
+            "Label": "IFSC",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5019,
+            "MatchedCount": 5019
+          }
+        ],
+        "account_number": [
+          {
+            "Label": "BankAccountNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5231619844590324,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5019,
+            "MatchedCount": 4570
+          },
+          {
+            "Label": "BankAccountNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "bank_account_id": [
+          {
+            "Label": "BankAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "cif_number": [
+          {
+            "Label": "CIFNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7999999999999727,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5019,
+            "MatchedCount": 5019
+          },
+          {
+            "Label": "CIFNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "ifsc_code": [
+          {
+            "Label": "IFSC",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5019,
+            "MatchedCount": 5019
+          },
+          {
+            "Label": "IFSC",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "micr_code": [
+          {
+            "Label": "MICRCode",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999714,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5019,
+            "MatchedCount": 5019
+          },
+          {
+            "Label": "MICRCode",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.business_entities": {
+      "columns": [
+        "tan",
+        "registered_address",
+        "authorised_signatory_email",
+        "authorised_signatory_name",
+        "company_name",
+        "pan_number",
+        "business_metadata",
+        "business_id",
+        "business_uuid",
+        "gstin",
+        "cin"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "authorised_signatory_email": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1044,
+            "MatchedCount": 1044
+          }
+        ],
+        "business_metadata": [
+          {
+            "Label": "TAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8999999999999846,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1044,
+            "MatchedCount": 1044
+          }
+        ],
+        "cin": [
+          {
+            "Label": "CIN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "company_name": [
+          {
+            "Label": "Name",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "gstin": [
+          {
+            "Label": "GSTIN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "pan_number": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9250000000000075,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1044,
+            "MatchedCount": 1044
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "tan": [
+          {
+            "Label": "TAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9499999999999923,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1044,
+            "MatchedCount": 1044
+          },
+          {
+            "Label": "TAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.business_vs_person_names": {
+      "columns": [
+        "test_id",
+        "company_name",
+        "person_full_name"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "company_name": [
+          {
+            "Label": "Name",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.checksum_edge_cases": {
+      "columns": [
+        "cin_value",
+        "pan_value",
+        "aadhaar_value",
+        "gstin_value",
+        "is_format_valid",
+        "notes",
+        "edge_id",
+        "scenario"
+      ],
+      "depth": "deepscan",
+      "findings": {
+        "aadhaar_value": [
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000723,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5000,
+            "MatchedCount": 5000
+          }
+        ],
+        "gstin_value": [
+          {
+            "Label": "GSTIN",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.02660000000000004,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5000,
+            "MatchedCount": 140
+          },
+          {
+            "Label": "GSTIN",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "pan_value": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8158299999999385,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5000,
+            "MatchedCount": 4799
+          }
+        ]
+      }
+    },
+    "public.cheque_payments": {
+      "columns": [
+        "payment_id",
+        "person_id",
+        "cheque_number",
+        "amount",
+        "payment_metadata",
+        "paid_on"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "cheque_number": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000013,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1954,
+            "MatchedCount": 1954
+          },
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "payment_metadata": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.6000000000000025,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1954,
+            "MatchedCount": 1954
+          }
+        ]
+      }
+    },
+    "public.cheque_substring_regression_test": {
+      "columns": [
+        "test_id",
+        "check_in",
+        "check_out",
+        "check_id",
+        "background_check_id",
+        "notes"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "background_check_id": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "check_id": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "check_in": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "check_out": [
+          {
+            "Label": "ChequeNumber",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.code_identifier_regression_test": {
+      "columns": [
+        "agent_code",
+        "driver_code",
+        "employee_code",
+        "patient_code",
+        "doctor_code",
+        "notes",
+        "test_id"
+      ],
+      "depth": "datascan",
+      "findings": {}
+    },
+    "public.credentials": {
+      "columns": [
+        "person_id",
+        "username",
+        "password_hash",
+        "oauth_token",
+        "credential_metadata",
+        "credential_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "oauth_token": [
+          {
+            "Label": "OAuthToken",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "password_hash": [
+          {
+            "Label": "Password",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "username": [
+          {
+            "Label": "Username",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.document_archive": {
+      "columns": [
+        "document_kind",
+        "document_csv",
+        "document_xml",
+        "archived_at",
+        "person_id",
+        "encoded_document",
+        "hex_document",
+        "document_json",
+        "archive_id",
+        "document_tags"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "document_csv": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999531,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          }
+        ],
+        "document_json": [
+          {
+            "Label": "ABHANumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999531,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000728,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          }
+        ],
+        "document_xml": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999531,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000728,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          }
+        ],
+        "encoded_document": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999531,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000728,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5020,
+            "MatchedCount": 5020
+          }
+        ]
+      }
+    },
+    "public.edge_cases": {
+      "columns": [
+        "should_detect",
+        "notes",
+        "edge_case_id",
+        "scenario",
+        "raw_value",
+        "structured_value",
+        "expected_entity"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "raw_value": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3632015306122512,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 2352,
+            "MatchedCount": 1005
+          },
+          {
+            "Label": "Email",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.2929421768707483,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 2352,
+            "MatchedCount": 689
+          },
+          {
+            "Label": "Phone",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.280187074829932,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 2352,
+            "MatchedCount": 659
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.11972789115646337,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 2352,
+            "MatchedCount": 352
+          }
+        ],
+        "structured_value": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 181,
+            "MatchedCount": 181
+          }
+        ]
+      }
+    },
+    "public.employment_records": {
+      "columns": [
+        "esic_number",
+        "employer_name",
+        "employment_metadata",
+        "employment_id",
+        "person_id",
+        "uan",
+        "epf_member_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "employment_metadata": [
+          {
+            "Label": "EPFMemberID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9499999999999705,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 3024,
+            "MatchedCount": 3024
+          },
+          {
+            "Label": "UAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9499999999999705,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 3024,
+            "MatchedCount": 3024
+          }
+        ],
+        "epf_member_id": [
+          {
+            "Label": "EPFMemberID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9749999999999852,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 3024,
+            "MatchedCount": 3024
+          },
+          {
+            "Label": "EPFMemberID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "esic_number": [
+          {
+            "Label": "ESIC",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7999999999999847,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 3024,
+            "MatchedCount": 3024
+          },
+          {
+            "Label": "ESIC",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "uan": [
+          {
+            "Label": "UAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9749999999999852,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 3024,
+            "MatchedCount": 3024
+          },
+          {
+            "Label": "UAN",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.expected_detection": {
+      "columns": [
+        "should_detect",
+        "confidence",
+        "reason",
+        "detection_id",
+        "table_name",
+        "column_name",
+        "entity_name"
+      ],
+      "depth": "deepscan",
+      "findings": {
+        "entity_name": [
+          {
+            "Label": "Name",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.false_positive_candidates": {
+      "columns": [
+        "should_detect",
+        "candidate_id",
+        "candidate_value",
+        "resembles_entity",
+        "why_not_pii"
+      ],
+      "depth": "datascan",
+      "findings": {}
+    },
+    "public.free_text_narratives": {
+      "columns": [
+        "narrative_id",
+        "person_id",
+        "narrative_type",
+        "narrative_text"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "narrative_text": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4034,
+            "MatchedCount": 4034
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4034,
+            "MatchedCount": 4034
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.849999999999941,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4034,
+            "MatchedCount": 4034
+          }
+        ]
+      }
+    },
+    "public.generic_id_regression_test": {
+      "columns": [
+        "loan_id",
+        "policy_id",
+        "user_id",
+        "taxpayer_id",
+        "card_id",
+        "account_id",
+        "notes",
+        "test_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "account_id": [
+          {
+            "Label": "BankAccountNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "card_id": [
+          {
+            "Label": "CreditCard",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "loan_id": [
+          {
+            "Label": "LoanAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "policy_id": [
+          {
+            "Label": "InsurancePolicyNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "taxpayer_id": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "user_id": [
+          {
+            "Label": "Username",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.investment_accounts": {
+      "columns": [
+        "holding_id",
+        "person_id",
+        "demat_account_number",
+        "sebi_registration",
+        "isin",
+        "holding_metadata"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "demat_account_number": [
+          {
+            "Label": "DematAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9333924050633046,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1975,
+            "MatchedCount": 1802
+          },
+          {
+            "Label": "DematAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "holding_metadata": [
+          {
+            "Label": "DematAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9500000000000308,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1975,
+            "MatchedCount": 1975
+          }
+        ],
+        "sebi_registration": [
+          {
+            "Label": "SEBIRegistration",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9750000000000154,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1975,
+            "MatchedCount": 1975
+          },
+          {
+            "Label": "SEBIRegistration",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.loans_and_insurance": {
+      "columns": [
+        "record_metadata",
+        "record_id",
+        "person_id",
+        "loan_account_number",
+        "policy_number",
+        "insurer_name",
+        "sanctioned_amount"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "loan_account_number": [
+          {
+            "Label": "LoanAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7738083291520363,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1993,
+            "MatchedCount": 1819
+          },
+          {
+            "Label": "LoanAccountNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "policy_number": [
+          {
+            "Label": "InsurancePolicyNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5500000000000003,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1993,
+            "MatchedCount": 1993
+          },
+          {
+            "Label": "InsurancePolicyNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "record_metadata": [
+          {
+            "Label": "InsurancePolicyNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.6000000000000006,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1993,
+            "MatchedCount": 1993
+          },
+          {
+            "Label": "LoanAccountNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.6000000000000006,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1993,
+            "MatchedCount": 1993
+          }
+        ]
+      }
+    },
+    "public.masked_and_partial_values": {
+      "columns": [
+        "should_detect",
+        "notes",
+        "mask_id",
+        "scenario",
+        "masked_value",
+        "expected_entity"
+      ],
+      "depth": "deepscan",
+      "findings": {}
+    },
+    "public.multilingual_records": {
+      "columns": [
+        "language_code",
+        "raw_text",
+        "payload",
+        "record_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "raw_text": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999408,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4062,
+            "MatchedCount": 4062
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7639094042343673,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4062,
+            "MatchedCount": 3103
+          }
+        ]
+      }
+    },
+    "public.network_activity": {
+      "columns": [
+        "activity_id",
+        "person_id",
+        "source_ip",
+        "device_mac",
+        "location_text",
+        "activity_metadata",
+        "logged_at"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "activity_metadata": [
+          {
+            "Label": "IPAddress",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 8021,
+            "MatchedCount": 8021
+          }
+        ],
+        "device_mac": [
+          {
+            "Label": "MacAddress",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 8021,
+            "MatchedCount": 8021
+          },
+          {
+            "Label": "MacAddress",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "location_text": [
+          {
+            "Label": "Location",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "source_ip": [
+          {
+            "Label": "IPAddress",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 8021,
+            "MatchedCount": 8021
+          },
+          {
+            "Label": "IPAddress",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.payment_instruments": {
+      "columns": [
+        "person_id",
+        "card_number",
+        "card_cvv",
+        "upi_id",
+        "instrument_metadata",
+        "instrument_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "card_cvv": [
+          {
+            "Label": "CVV",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9000000000000236,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5030,
+            "MatchedCount": 5030
+          },
+          {
+            "Label": "CVV",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "card_number": [
+          {
+            "Label": "CreditCard",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.5,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "instrument_metadata": [
+          {
+            "Label": "UPIID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1.1999999999998907,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5030,
+            "MatchedCount": 5030
+          }
+        ],
+        "upi_id": [
+          {
+            "Label": "UPIID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1.0999999999999455,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5030,
+            "MatchedCount": 5030
+          },
+          {
+            "Label": "UPIID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.person_contacts": {
+      "columns": [
+        "mailid",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "correspondence_address",
+        "contact_json",
+        "primary_contact",
+        "person_id",
+        "e_mail",
+        "cust_mail",
+        "alternate_phone",
+        "normalized_email",
+        "contact_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "alternate_phone": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          },
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "contact_json": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          }
+        ],
+        "correspondence_address": [
+          {
+            "Label": "Address",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "cust_mail": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 550,
+            "MatchedCount": 550
+          }
+        ],
+        "e_mail": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 4157,
+            "MatchedCount": 4157
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "emergency_contact_phone": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          }
+        ],
+        "mailid": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 880,
+            "MatchedCount": 880
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "normalized_email": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          }
+        ],
+        "primary_contact": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5037,
+            "MatchedCount": 5037
+          }
+        ]
+      }
+    },
+    "public.person_kyc_documents": {
+      "columns": [
+        "voter_id_number",
+        "person_id",
+        "kyc_payload",
+        "verified_at",
+        "kyc_id",
+        "abha_number",
+        "passport_number",
+        "ration_card_number",
+        "driving_licence_number"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "abha_number": [
+          {
+            "Label": "ABHANumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5070,
+            "MatchedCount": 5070
+          },
+          {
+            "Label": "ABHANumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "driving_licence_number": [
+          {
+            "Label": "DrivingLicenceNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1306,
+            "MatchedCount": 1306
+          },
+          {
+            "Label": "DrivingLicenceNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "kyc_payload": [
+          {
+            "Label": "ABHANumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5070,
+            "MatchedCount": 5070
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8499999999999571,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5070,
+            "MatchedCount": 5070
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000738,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5070,
+            "MatchedCount": 5070
+          }
+        ],
+        "passport_number": [
+          {
+            "Label": "PassportNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 976,
+            "MatchedCount": 976
+          },
+          {
+            "Label": "PassportNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "ration_card_number": [
+          {
+            "Label": "RationCard",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7566938300349215,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 859,
+            "MatchedCount": 630
+          },
+          {
+            "Label": "RationCard",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "voter_id_number": [
+          {
+            "Label": "VoterID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.7999999999999744,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 1730,
+            "MatchedCount": 1730
+          }
+        ]
+      }
+    },
+    "public.persons_master": {
+      "columns": [
+        "person_id",
+        "gender",
+        "pan_number",
+        "aadhaar_number",
+        "full_name",
+        "nationality",
+        "mobile_number",
+        "person_uuid",
+        "primary_email",
+        "residential_address",
+        "date_of_birth"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "aadhaar_number": [
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9000000000000369,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "AdharcardNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "date_of_birth": [
+          {
+            "Label": "BirthDate",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "BirthDate",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "full_name": [
+          {
+            "Label": "Name",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "gender": [
+          {
+            "Label": "Gender",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "Gender",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "mobile_number": [
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "Phone",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "nationality": [
+          {
+            "Label": "Nationality",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "pan_number": [
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.9249999999999785,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "PANNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "primary_email": [
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 5068,
+            "MatchedCount": 5068
+          },
+          {
+            "Label": "Email",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "residential_address": [
+          {
+            "Label": "Address",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.quantity_numeric_regression_test": {
+      "columns": [
+        "order_quantity",
+        "item_count",
+        "stock_level",
+        "test_id"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "order_quantity": [
+          {
+            "Label": "UAN",
+            "Confidence": "Low",
+            "ConfidenceIcon": "🔵",
+            "Weight": 0.3,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    },
+    "public.uuid_regression_test": {
+      "columns": [
+        "notes",
+        "test_id",
+        "subject_uuid",
+        "session_uuid",
+        "reference_uuid"
+      ],
+      "depth": "datascan",
+      "findings": {}
+    },
+    "public.vehicles": {
+      "columns": [
+        "vehicle_id",
+        "owner_person_id",
+        "vehicle_number",
+        "fastag_id",
+        "vehicle_metadata"
+      ],
+      "depth": "datascan",
+      "findings": {
+        "fastag_id": [
+          {
+            "Label": "FASTagID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8000000000000054,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 969,
+            "MatchedCount": 969
+          },
+          {
+            "Label": "FASTagID",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ],
+        "vehicle_metadata": [
+          {
+            "Label": "VehicleNumber",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.6819401444788408,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 969,
+            "MatchedCount": 826
+          },
+          {
+            "Label": "FASTagID",
+            "Confidence": "Medium",
+            "ConfidenceIcon": "🟡",
+            "Weight": 0.6000000000000109,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 969,
+            "MatchedCount": 969
+          }
+        ],
+        "vehicle_number": [
+          {
+            "Label": "VehicleNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 0.8409700722394204,
+            "DetectorType": "value detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 969,
+            "MatchedCount": 826
+          },
+          {
+            "Label": "VehicleNumber",
+            "Confidence": "High",
+            "ConfidenceIcon": "🔴",
+            "Weight": 1,
+            "DetectorType": "column detector",
+            "DetectorName": "regex",
+            "ScanedValueCount": 0,
+            "MatchedCount": 0
+          }
+        ]
+      }
+    }
+  }
+}

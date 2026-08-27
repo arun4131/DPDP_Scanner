@@ -219,15 +219,19 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, columnConte
 					}
 				}
 
+				matchIndex := v.Regexp.FindStringIndex(word)
 				out = append(out, PiiLabelWithWeight{
-					PIILabel: label,
-					Weight:   v.Weight,
+					PIILabel:         label,
+					Weight:           v.Weight,
+					MatchStart:       matchIndex[0],
+					MatchEnd:         matchIndex[1],
+					HasMatchPosition: !r.isColumnDetector,
 				})
 
 				break
 			}
-			if v.Regexp.MatchString(word) {
-				matched := v.Regexp.FindString(word)
+			if matchIndex := v.Regexp.FindStringIndex(word); matchIndex != nil {
+				matched := word[matchIndex[0]:matchIndex[1]]
 				if !r.isColumnDetector {
 
 					if label == PIILabel_CreditCard {
@@ -271,8 +275,11 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, columnConte
 					}
 				} // end !r.isColumnDetector
 				out = append(out, PiiLabelWithWeight{
-					PIILabel: label,
-					Weight:   v.Weight,
+					PIILabel:         label,
+					Weight:           v.Weight,
+					MatchStart:       matchIndex[0],
+					MatchEnd:         matchIndex[1],
+					HasMatchPosition: !r.isColumnDetector,
 				})
 
 				break
@@ -911,7 +918,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_EPFMemberID: {
 			{
 				// High confidence - EPF Member ID related column names (word-bounded)
-				Regexp: regexp.MustCompile(`(?i)\b(epf[\s_-]?member|epf[\s_-]?member[\s_-]?id|epf[\s_-]?member[\s_-]?number|epf[\s_-]?member[\s_-]?no|epf[\s_-]?member[\s_-]?num|epf[\s_-]?member[\s_-]?identifier|epf[\s_-]?account|epf[\s_-]?account[\s_-]?number|epf[\s_-]?account[\s_-]?id|epf[\s_-]?account[\s_-]?identifier|epfo[\s_-]?member|epfo[\s_-]?member[\s_-]?id|epfo[\s_-]?member[\s_-]?number|pf[\s_-]?member|pf[\s_-]?member[\s_-]?id|pf[\s_-]?member[\s_-]?number|pf[\s_-]?account|pf[\s_-]?account[\s_-]?number|pf[\s_-]?account[\s_-]?id|provident[\s_-]?fund[\s_-]?member|provident[\s_-]?fund[\s_-]?member[\s_-]?id|provident[\s_-]?fund[\s_-]?member[\s_-]?number|provident[\s_-]?fund[\s_-]?account|provident[\s_-]?fund[\s_-]?account[\s_-]?number|employee[\s_-]?pf[\s_-]?member|employee[\s_-]?pf[\s_-]?member[\s_-]?id|employee[\s_-]?provident[\s_-]?fund[\s_-]?member|employee[\s_-]?provident[\s_-]?fund[\s_-]?member[\s_-]?id|member[\s_-]?pf[\s_-]?number|member[\s_-]?epf[\s_-]?number|pf[\s_-]?member[\s_-]?code|epf[\s_-]?member[\s_-]?code)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(epf|epf[\s_-]?member|epf[\s_-]?member[\s_-]?id|epf[\s_-]?member[\s_-]?number|epf[\s_-]?member[\s_-]?no|epf[\s_-]?member[\s_-]?num|epf[\s_-]?member[\s_-]?identifier|epf[\s_-]?account|epf[\s_-]?account[\s_-]?number|epf[\s_-]?account[\s_-]?id|epf[\s_-]?account[\s_-]?identifier|epfo[\s_-]?member|epfo[\s_-]?member[\s_-]?id|epfo[\s_-]?member[\s_-]?number|pf[\s_-]?member|pf[\s_-]?member[\s_-]?id|pf[\s_-]?member[\s_-]?number|pf[\s_-]?account|pf[\s_-]?account[\s_-]?number|pf[\s_-]?account[\s_-]?id|provident[\s_-]?fund[\s_-]?member|provident[\s_-]?fund[\s_-]?member[\s_-]?id|provident[\s_-]?fund[\s_-]?member[\s_-]?number|provident[\s_-]?fund[\s_-]?account|provident[\s_-]?fund[\s_-]?account[\s_-]?number|employee[\s_-]?pf[\s_-]?member|employee[\s_-]?pf[\s_-]?member[\s_-]?id|employee[\s_-]?provident[\s_-]?fund[\s_-]?member|employee[\s_-]?provident[\s_-]?fund[\s_-]?member[\s_-]?id|member[\s_-]?pf[\s_-]?number|member[\s_-]?epf[\s_-]?number|pf[\s_-]?member[\s_-]?code|epf[\s_-]?member[\s_-]?code)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},
@@ -1004,7 +1011,7 @@ func (r *regexColumnDetector) Init() error {
 		PIILabel_VehicleNumber: {
 			{
 				// High confidence - Vehicle Registration Number related column names (word-bounded)
-				Regexp: regexp.MustCompile(`(?i)\b(vehicle[\s_-]?number|vehicle[\s_-]?no|vehicle[\s_-]?num|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?registration[\s_-]?no|vehicle[\s_-]?registration[\s_-]?num|vehicle[\s_-]?registration[\s_-]?id|vehicle[\s_-]?registration[\s_-]?mark|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|vehicle[\s_-]?reg[\s_-]?no|vehicle[\s_-]?reg[\s_-]?num|registration[\s_-]?mark|registration[\s_-]?mark[\s_-]?number|registration[\s_-]?plate|registration[\s_-]?plate[\s_-]?number|number[\s_-]?plate|number[\s_-]?plate[\s_-]?number|license[\s_-]?plate|license[\s_-]?plate[\s_-]?number|licence[\s_-]?plate|licence[\s_-]?plate[\s_-]?number|vehicle[\s_-]?plate|vehicle[\s_-]?plate[\s_-]?number|plate[\s_-]?number|motor[\s_-]?vehicle[\s_-]?number|motor[\s_-]?vehicle[\s_-]?registration|motor[\s_-]?vehicle[\s_-]?registration[\s_-]?number|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration[\s_-]?number|transport[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration[\s_-]?number|vrn|vehicle[\s_-]?vrn)\b`),
+				Regexp: regexp.MustCompile(`(?i)\b(vehicle|vehicle[\s_-]?number|vehicle[\s_-]?no|vehicle[\s_-]?num|vehicle[\s_-]?registration|vehicle[\s_-]?registration[\s_-]?number|vehicle[\s_-]?registration[\s_-]?no|vehicle[\s_-]?registration[\s_-]?num|vehicle[\s_-]?registration[\s_-]?id|vehicle[\s_-]?registration[\s_-]?mark|vehicle[\s_-]?reg|vehicle[\s_-]?reg[\s_-]?number|vehicle[\s_-]?reg[\s_-]?no|vehicle[\s_-]?reg[\s_-]?num|registration[\s_-]?mark|registration[\s_-]?mark[\s_-]?number|registration[\s_-]?plate|registration[\s_-]?plate[\s_-]?number|number[\s_-]?plate|number[\s_-]?plate[\s_-]?number|license[\s_-]?plate|license[\s_-]?plate[\s_-]?number|licence[\s_-]?plate|licence[\s_-]?plate[\s_-]?number|vehicle[\s_-]?plate|vehicle[\s_-]?plate[\s_-]?number|plate[\s_-]?number|motor[\s_-]?vehicle[\s_-]?number|motor[\s_-]?vehicle[\s_-]?registration|motor[\s_-]?vehicle[\s_-]?registration[\s_-]?number|automobile[\s_-]?registration[\s_-]?number|car[\s_-]?registration[\s_-]?number|bike[\s_-]?registration[\s_-]?number|motorcycle[\s_-]?registration[\s_-]?number|truck[\s_-]?registration[\s_-]?number|bus[\s_-]?registration[\s_-]?number|commercial[\s_-]?vehicle[\s_-]?registration|commercial[\s_-]?vehicle[\s_-]?registration[\s_-]?number|transport[\s_-]?vehicle[\s_-]?registration|transport[\s_-]?vehicle[\s_-]?registration[\s_-]?number|vrn|vehicle[\s_-]?vrn)\b`),
 				Weight: 1.0,
 				Region: RegionIndia,
 			},

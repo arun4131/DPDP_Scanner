@@ -43,6 +43,8 @@ type Data struct {
 type Entity struct {
 	Text  string `json:"text"`
 	Label string `json:"label"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
 }
 
 const spacyFileName = "spacy_runner.py"
@@ -346,13 +348,19 @@ func (u *spacyDetector) Detect(ctx context.Context, word string, columnContext C
 		switch entity.Label {
 		case "PERSON":
 			labels = append(labels, PiiLabelWithWeight{
-				PIILabel: PIILabel_Name,
-				Weight:   0.7,
+				PIILabel:         PIILabel_Name,
+				Weight:           0.7,
+				MatchStart:       entity.Start,
+				MatchEnd:         entity.End,
+				HasMatchPosition: entity.End > entity.Start,
 			})
 		case "GPE":
 			labels = append(labels, PiiLabelWithWeight{
-				PIILabel: PIILabel_Address,
-				Weight:   0.7,
+				PIILabel:         PIILabel_Address,
+				Weight:           0.7,
+				MatchStart:       entity.Start,
+				MatchEnd:         entity.End,
+				HasMatchPosition: entity.End > entity.Start,
 			})
 		}
 	}

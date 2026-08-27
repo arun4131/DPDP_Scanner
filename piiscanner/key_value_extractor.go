@@ -20,8 +20,7 @@ type KeyValuePair struct {
 }
 
 var (
-	// These expressions are intentionally fallbacks for malformed JSON-like and
-	// loose text. Valid structured input is handled by the standard parsers.
+	// These are fallbacks for malformed JSON-like blobs and simple key/value text.
 	jsonQuotedKVRegex   = regexp.MustCompile(`"([^"\\]+)"\s*:\s*"([^"\\]+)"`)
 	jsonUnquotedKVRegex = regexp.MustCompile(`"([^"\\]+)"\s*:\s*([0-9a-zA-Z._-]+)`)
 	textKVRegex         = regexp.MustCompile(`(?i)\b([a-zA-Z0-9_-]{2,30})\s*[:=]\s*([^\s,;]{2,100})`)
@@ -48,14 +47,14 @@ func (c *kvCollector) add(key, value string) {
 	c.pairs = append(c.pairs, pair)
 }
 
-// PreprocessAndExtractKV decodes a single URL/Base64 layer and extracts
-// key-value pairs from JSON, XML, URLs, query strings, and loose text.
-// Duplicate keys are preserved when their values differ.
+// PreprocessAndExtractKV unwraps one URL or Base64 layer, then extracts fields
+// from JSON, XML, query strings, or loose key/value text. Repeated keys are kept
+// when their values differ.
 func PreprocessAndExtractKV(text string) (string, []KeyValuePair) {
 	processed := strings.TrimSpace(text)
 
-	// Decode a blob whose separators themselves are URL encoded. Normal query
-	// strings are parsed before value decoding so an encoded '&' stays in its value.
+	// Decode blobs that hide their separators behind URL encoding. Leave normal
+	// query strings alone so an encoded '&' inside a value stays there.
 	lower := strings.ToLower(processed)
 	if strings.Contains(lower, "%3d") && !strings.Contains(processed, "=") {
 		if decoded, err := url.QueryUnescape(processed); err == nil {
@@ -77,8 +76,8 @@ func PreprocessAndExtractKV(text string) (string, []KeyValuePair) {
 	}
 	queryParsed := extractQuery(trimmed, collector)
 
-	// Keep compatibility with imperfect JSON-like database blobs, but do not
-	// apply broad regexes to content already parsed successfully.
+	// Use the loose regex fallbacks only when the structured parsers fail. They
+	// are deliberately permissive and can misread valid structured content.
 	if !jsonParsed && !xmlParsed && !queryParsed {
 		extractJSONFallback(trimmed, collector)
 		if len(collector.pairs) == 0 {
@@ -155,7 +154,7 @@ func extractJSON(text string, collector *kvCollector) bool {
 	if err := decoder.Decode(&value); err != nil {
 		return false
 	}
-	// Reject trailing non-whitespace content.
+	// A second decoded value means there is trailing content after the JSON.
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return false
 	}

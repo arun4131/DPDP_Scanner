@@ -28,7 +28,6 @@ var EntityTierMap = map[PIILabel]EntityTier{
 	PIILabel_DrivingLicenceNumber: Tier2,
 	PIILabel_DematAccountNumber:   Tier2,
 	PIILabel_TAN:                  Tier2,
-	PIILabel_UAN:                  Tier2,
 	PIILabel_ABHANumber:           Tier2,
 	PIILabel_EPFMemberID:          Tier2,
 	PIILabel_SEBIRegistration:     Tier2,
@@ -37,6 +36,7 @@ var EntityTierMap = map[PIILabel]EntityTier{
 	// Tier 3 Entities (These are very broad and generic entities we can't allow them to directly pariticipate for obfuscated columns)
 	// These are helped by domain gating
 	PIILabel_VoterID:      Tier3,
+	PIILabel_UAN:          Tier3,
 	PIILabel_CVV:          Tier3,
 	PIILabel_ChequeNumber: Tier3,
 	PIILabel_MICRCode:     Tier3,

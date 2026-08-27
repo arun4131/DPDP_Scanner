@@ -6,13 +6,12 @@ import (
 
 type ConflictResolver struct{}
 
-// NewConflictResolver creates a new ConflictResolver instance
+// NewConflictResolver creates a new conflictresolver instance.
 func NewConflictResolver() *ConflictResolver {
 	return &ConflictResolver{}
 }
 
-// ResolveColumnConflicts evaluates all candidate findings for a column and returns
-// the resolved, filtered, and suppressed winning list of findings.
+// ResolveColumnConflicts solves conflicts and filters the final results.
 func (c *ConflictResolver) ResolveColumnConflicts(
 	tableName string,
 	columnName string,
@@ -28,17 +27,15 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 	var filtered []PIIDataWithWeightString
 
 	for _, item := range candidates {
-		// Ensure Tier is populated
+		// To get it's tier .
 		if item.Tier == "" {
 			item.Tier = GetEntityTier(item.Label)
 		}
 
-		// Rules for findings without trusted context. A matching outer column
-		// provides context for the whole column; an embedded key provides context
-		// only for the entity detected under that key.
+		// This case is for no column name match or for obfuscated columns.
+		// values matched a known pattern or value regex.
 		if !hasColumnMatch && !item.ContextMatched {
-			// Rule 1: Cap Tier 2 and Tier 3 findings at Medium on obfuscated
-			// columns. Explicit embedded-key context is exempt regardless of weight.
+			// Makes the highest confidence as medium for tier 2 ,3 entities for unkown columns.
 			if item.Tier == Tier2 || item.Tier == Tier3 {
 				if item.Weight >= 0.70 {
 					item.Weight = 0.69
@@ -47,12 +44,13 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 				}
 			}
 
-			// Rule 2: Applying Domain Gating on un-keyed Tier 3 candidates (Weight < 1.0)
+			// Domain gating is used for Tier 3 entities becasue of their generic pattern.
+			// Domain gating helps to reduce fp's occuring with these tier 3 entities.
 			if item.Tier == Tier3 && item.Weight < 1.0 {
 				candidateDomain := EntityDomainMap[item.Label]
 				if candidateDomain != "" && candidateDomain != DomainPersonal {
 					if dominantDomain == "" || candidateDomain != dominantDomain {
-						// Drop un-keyed Tier 3 candidate if table domain is unknown or conflicts
+						// An unknown or conflicting domain is not enough support.
 						continue
 					}
 				}
@@ -66,7 +64,8 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 		return filtered
 	}
 
-	// Rule 3: Rank candidates by Confidence -> Tier -> Match Density -> Weight
+	// Ranking the strongest evidence first. Because label is the final tie-breaker so
+	// repeated scans produce the same order.
 	sort.Slice(filtered, func(i, j int) bool {
 		rankI := confidenceRank(filtered[i].Confidence)
 		rankJ := confidenceRank(filtered[j].Confidence)
@@ -74,10 +73,20 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 			return rankI > rankJ
 		}
 
+		if filtered[i].ContextMatched != filtered[j].ContextMatched {
+			return filtered[i].ContextMatched
+		}
+
 		tierI := TierRank(filtered[i].Tier)
 		tierJ := TierRank(filtered[j].Tier)
 		if tierI != tierJ {
 			return tierI > tierJ
+		}
+
+		// A confidence band can contain different scores, so compare the exact
+		// weight next.
+		if filtered[i].Weight != filtered[j].Weight {
+			return filtered[i].Weight > filtered[j].Weight
 		}
 
 		var densityI, densityJ float64
@@ -91,10 +100,12 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 			return densityI > densityJ
 		}
 
-		return filtered[i].Weight > filtered[j].Weight
+		// Keep the result stable when every other signal is tied.
+		return filtered[i].Label < filtered[j].Label
 	})
 
-	// Rule 4: Primary Winner Suppression (performed per DetectorType so Meta Scan and Data Scan remain intact)
+	// Resolve metadata and value findings separately because they are reported in
+	// different scan sections.
 	var finalOutput []PIIDataWithWeightString
 
 	for _, dt := range []DetectorType{DetectorType_ColumnDetector, DetectorType_ValueDetector} {
@@ -108,21 +119,33 @@ func (c *ConflictResolver) ResolveColumnConflicts(
 			continue
 		}
 
-		topConfidence := sub[0].Confidence
-		if topConfidence == "High" {
-			for _, item := range sub {
-				if item.Confidence == "High" {
-					finalOutput = append(finalOutput, item)
-				}
+		// sub keeps the strongest-to-weakest order from filtered.
+		if hasColumnMatch {
+			// A known physical column represents one field, so it gets one winner.
+			finalOutput = append(finalOutput, sub[0])
+			continue
+		}
+
+		// The worker has already resolved conflicts for candidates with match
+		// positions. Keep those winners and use the confidence fallback only for
+		// detectors that do not provide positions.
+		var unresolved []PIIDataWithWeightString
+		for _, item := range sub {
+			if item.ProvenanceResolved {
+				finalOutput = append(finalOutput, item)
+				continue
 			}
-		} else if topConfidence == "Medium" {
-			for _, item := range sub {
-				if item.Confidence == "High" || item.Confidence == "Medium" {
-					finalOutput = append(finalOutput, item)
-				}
+			unresolved = append(unresolved, item)
+		}
+		if len(unresolved) == 0 {
+			continue
+		}
+
+		topConfidence := unresolved[0].Confidence
+		for _, item := range unresolved {
+			if item.Confidence == topConfidence {
+				finalOutput = append(finalOutput, item)
 			}
-		} else {
-			finalOutput = append(finalOutput, sub...)
 		}
 	}
 

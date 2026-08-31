@@ -52,8 +52,8 @@ func (t *TableScanWorker) WithColumnDetector(d Detector) *TableScanWorker {
 	return t
 }
 
-// getColumnContext checks if the column name matches any column detector pattern.
-// Results are cached so the regex only runs once per unique column name.
+// getColumnContext returns the strongest label found in a column name or key.
+// Results are cached because the same name always produces the same context.
 func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) ColumnContext {
 	columnContext := make(ColumnContext)
 
@@ -73,8 +73,8 @@ func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) C
 		return columnContext
 	}
 
-	for _, label := range labels {
-		columnContext[label.PIILabel] = true
+	if strongest, found := strongestColumnMatch(labels); found {
+		columnContext[strongest.PIILabel] = true
 	}
 
 	t.columnContextCacheMu.Lock()
@@ -82,6 +82,30 @@ func (t *TableScanWorker) getColumnContext(ctx context.Context, column string) C
 	t.columnContextCacheMu.Unlock()
 
 	return columnContext
+}
+
+func strongestColumnMatch(
+	labels []PiiLabelWithWeight,
+) (PiiLabelWithWeight, bool) {
+	if len(labels) == 0 {
+		return PiiLabelWithWeight{}, false
+	}
+
+	strongest := labels[0]
+
+	for _, label := range labels[1:] {
+		if label.Weight > strongest.Weight {
+			strongest = label
+			continue
+		}
+
+		if label.Weight == strongest.Weight &&
+			label.PIILabel < strongest.PIILabel {
+			strongest = label
+		}
+	}
+
+	return strongest, true
 }
 
 func (t *TableScanWorker) Start(ctx context.Context) (err error) {
@@ -99,46 +123,39 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 		// Determine column context once per column name using column detector
 		columnContext := t.getColumnContext(ctx, data.ColumnName)
 
-		// A recognized physical column is a normal scalar field. Do not run its
-		// value through loose key-value extraction: scalar formats such as MAC,
-		// IPv6, and timestamps legitimately contain ':' and can look like key/value
-		// text. Only unmatched/container columns enter document preprocessing.
-		processedValue := data.Value
-		var kvPairs []KeyValuePair
-		if len(columnContext) == 0 {
-			processedValue, kvPairs = PreprocessAndExtractKV(data.Value)
-		}
+		logicalFields, documentExtracted := buildLogicalFields(
+			data.ColumnName,
+			data.Value,
+			len(columnContext) == 0,
+		)
 
-		scanVal := processedValue
-		if scanVal == "" {
-			scanVal = data.Value
-		}
-		scanSegments := detectionSegments(scanVal, detectionChunkSize)
+		isUnstructuredText := len(columnContext) == 0 && !documentExtracted
 
 		for _, detector := range t.detectors {
-			// Preserve candidate provenance until collisions for the same value have
-			// been resolved. Structured values are scanned one extracted field at a
-			// time; unstructured values are resolved by overlapping match positions.
 			merged := make(map[PIILabel]PiiLabelWithWeight)
-			if len(kvPairs) > 0 {
-				for _, kv := range kvPairs {
-					kvCtx := t.getColumnContext(ctx, kv.Key)
-					labels, err := detectLogicalValue(ctx, detector, kv.Value, kvCtx)
+
+			for _, field := range logicalFields {
+				fieldContext := t.getColumnContext(ctx, field.Key)
+				segments := detectionSegments(field.Value, detectionChunkSize)
+
+				for _, segment := range segments {
+					labels, err := detectFieldValue(
+						ctx,
+						detector,
+						segment,
+						fieldContext,
+						isUnstructuredText,
+					)
 					if err != nil {
-						continue
+						return fmt.Errorf(
+							"error detecting PII in %s: %w",
+							field.Key,
+							err,
+						)
 					}
+
 					for _, label := range labels {
-						mergeCellLabel(merged, label)
-					}
-				}
-			} else {
-				for _, segment := range scanSegments {
-					labels, err := detectLogicalValue(ctx, detector, segment, columnContext)
-					if err != nil {
-						return fmt.Errorf("error detecting pii data: from %s (%v)", detector.Name(), err)
-					}
-					for _, label := range labels {
-						mergeCellLabel(merged, label)
+						mergeStrongestLabel(merged, label)
 					}
 				}
 			}
@@ -162,20 +179,76 @@ func (t *TableScanWorker) Start(ctx context.Context) (err error) {
 	return nil
 }
 
-// detectLogicalValue resolves only candidates that refer to the same matched
-// value. Non-overlapping matches are independent and are all retained.
-func detectLogicalValue(ctx context.Context, detector Detector, value string, columnContext ColumnContext) ([]PiiLabelWithWeight, error) {
+func detectFieldValue(
+	ctx context.Context,
+	detector Detector,
+	value string,
+	columnContext ColumnContext,
+	isUnstructuredText bool,
+) ([]PiiLabelWithWeight, error) {
 	labels, err := detector.Detect(ctx, value, columnContext)
 	if err != nil {
 		return nil, err
 	}
+
 	for index := range labels {
 		if columnContext[labels[index].PIILabel] {
 			labels[index].Weight = 1.0
 			labels[index].ContextMatched = true
 		}
 	}
-	return resolveOccurrenceConflicts(labels), nil
+
+	if isUnstructuredText {
+		return resolveOccurrenceConflicts(labels), nil
+	}
+
+	return resolveLogicalField(labels), nil
+}
+
+func detectLogicalValue(
+	ctx context.Context,
+	detector Detector,
+	value string,
+	columnContext ColumnContext,
+) ([]PiiLabelWithWeight, error) {
+	return detectFieldValue(
+		ctx,
+		detector,
+		value,
+		columnContext,
+		false,
+	)
+}
+
+func resolveLogicalField(
+	labels []PiiLabelWithWeight,
+) []PiiLabelWithWeight {
+	if len(labels) == 0 {
+		return nil
+	}
+
+	winner := labels[0]
+
+	for _, label := range labels[1:] {
+		if label.ContextMatched != winner.ContextMatched {
+			if label.ContextMatched {
+				winner = label
+			}
+			continue
+		}
+
+		if label.Weight > winner.Weight {
+			winner = label
+			continue
+		}
+
+		if label.Weight == winner.Weight &&
+			label.PIILabel < winner.PIILabel {
+			winner = label
+		}
+	}
+
+	return []PiiLabelWithWeight{winner}
 }
 
 // resolveOccurrenceConflicts forms connected groups of overlapping match
@@ -184,9 +257,6 @@ func detectLogicalValue(ctx context.Context, detector Detector, value string, co
 // column-level resolver.
 func resolveOccurrenceConflicts(labels []PiiLabelWithWeight) []PiiLabelWithWeight {
 	if len(labels) < 2 {
-		if len(labels) == 1 && labels[0].HasMatchPosition {
-			labels[0].ProvenanceResolved = true
-		}
 		return labels
 	}
 
@@ -226,7 +296,6 @@ func resolveOccurrenceConflicts(labels []PiiLabelWithWeight) []PiiLabelWithWeigh
 				winner = positioned[index]
 			}
 		}
-		winner.ProvenanceResolved = true
 		resolved = append(resolved, winner)
 		start = end
 	}
@@ -234,21 +303,15 @@ func resolveOccurrenceConflicts(labels []PiiLabelWithWeight) []PiiLabelWithWeigh
 	return resolved
 }
 
-func strongerOccurrenceCandidate(candidate, current PiiLabelWithWeight) bool {
-	if candidate.ContextMatched != current.ContextMatched {
-		return candidate.ContextMatched
-	}
-	candidateConfidence, _ := getConfidenceLabel(candidate.Weight)
-	currentConfidence, _ := getConfidenceLabel(current.Weight)
-	if confidenceRank(candidateConfidence) != confidenceRank(currentConfidence) {
-		return confidenceRank(candidateConfidence) > confidenceRank(currentConfidence)
-	}
-	if TierRank(GetEntityTier(candidate.PIILabel)) != TierRank(GetEntityTier(current.PIILabel)) {
-		return TierRank(GetEntityTier(candidate.PIILabel)) > TierRank(GetEntityTier(current.PIILabel))
-	}
+func strongerOccurrenceCandidate(
+	candidate PiiLabelWithWeight,
+	current PiiLabelWithWeight,
+) bool {
 	if candidate.Weight != current.Weight {
 		return candidate.Weight > current.Weight
 	}
+
+	// Keep the result stable when both weights are equal.
 	return candidate.PIILabel < current.PIILabel
 }
 
@@ -275,18 +338,23 @@ func detectionSegments(value string, maxSize int) []string {
 	return segments
 }
 
-func mergeCellLabel(merged map[PIILabel]PiiLabelWithWeight, label PiiLabelWithWeight) {
+func mergeStrongestLabel(
+	merged map[PIILabel]PiiLabelWithWeight,
+	label PiiLabelWithWeight,
+) {
 	existing, found := merged[label.PIILabel]
+
 	if !found || label.Weight > existing.Weight {
-		// Do not lose trusted provenance carried by a lower-weight occurrence.
-		label.ContextMatched = label.ContextMatched || existing.ContextMatched
-		label.ProvenanceResolved = label.ProvenanceResolved || existing.ProvenanceResolved
+		label.ContextMatched =
+			label.ContextMatched || existing.ContextMatched
+
 		merged[label.PIILabel] = label
 		return
 	}
-	if label.ContextMatched && !existing.ContextMatched {
+
+	if label.ContextMatched {
 		existing.ContextMatched = true
 	}
-	existing.ProvenanceResolved = existing.ProvenanceResolved || label.ProvenanceResolved
+
 	merged[label.PIILabel] = existing
 }

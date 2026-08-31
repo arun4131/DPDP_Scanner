@@ -20,10 +20,9 @@ type PiiData struct {
 }
 
 type WeightWithCount struct {
-	Weight             float64
-	Count              int
-	ContextMatched     bool
-	ProvenanceResolved bool
+	Weight         float64
+	Count          int
+	ContextMatched bool
 }
 
 type PiiLabelMap map[string] /* detector name */ map[PIILabel]WeightWithCount
@@ -32,17 +31,23 @@ func NewPiiLabelMap() PiiLabelMap {
 	return make(map[string]map[PIILabel]WeightWithCount)
 }
 
-func (p PiiLabelMap) Add(detector string, label PIILabel, weight float64, contextMatched, provenanceResolved bool) {
+func (p PiiLabelMap) Add(
+	detector string,
+	label PIILabel,
+	weight float64,
+	contextMatched bool,
+) {
 	if _, ok := p[detector]; !ok {
 		p[detector] = make(map[PIILabel]WeightWithCount)
 	}
-	w := p[detector][label]
-	w.Weight += weight
-	w.Count++
-	w.ContextMatched = w.ContextMatched || contextMatched
-	w.ProvenanceResolved = w.ProvenanceResolved || provenanceResolved
 
-	p[detector][label] = w
+	current := p[detector][label]
+	current.Weight += weight
+	current.Count++
+	current.ContextMatched =
+		current.ContextMatched || contextMatched
+
+	p[detector][label] = current
 }
 
 type TableScanManager struct {
@@ -286,7 +291,7 @@ func (t *TableScanManager) OutputRunner() {
 		for _, label := range output.Labels {
 			// csvFile.Write([]string{output.Tablename, output.ColumnName, output.Value, // nolint:errcheck
 			// 	output.Type, string(label.PIILabel), fmt.Sprintf("%f", label.Weight)})
-			m.Add(output.Detector, label.PIILabel, label.Weight, label.ContextMatched, label.ProvenanceResolved)
+			m.Add(output.Detector, label.PIILabel, label.Weight, label.ContextMatched)
 		}
 	}
 	// csvFile.Flush()

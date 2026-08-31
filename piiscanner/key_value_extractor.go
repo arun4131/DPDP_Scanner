@@ -88,6 +88,34 @@ func PreprocessAndExtractKV(text string) (string, []KeyValuePair) {
 	return processed, collector.pairs
 }
 
+// buildLogicalFields returns the fields and whether document extraction worked.
+func buildLogicalFields(
+	columnName string,
+	value string,
+	extractDocument bool,
+) ([]KeyValuePair, bool) {
+	if extractDocument {
+		processedValue, extractedFields := PreprocessAndExtractKV(value)
+
+		if len(extractedFields) > 0 {
+			return extractedFields, true
+		}
+
+		if processedValue != "" {
+			value = processedValue
+		}
+	}
+
+	fields := []KeyValuePair{
+		{
+			Key:   columnName,
+			Value: value,
+		},
+	}
+
+	return fields, false
+}
+
 func decodeStructuredBase64(text string) (string, bool) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" || strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") || strings.HasPrefix(trimmed, "<") {

@@ -118,11 +118,10 @@ type Detector interface {
 }
 
 type PiiLabelWithWeight struct {
-	PIILabel           PIILabel
-	Weight             float64
-	ContextMatched     bool
-	MatchStart         int
-	MatchEnd           int
-	HasMatchPosition   bool
-	ProvenanceResolved bool
+	PIILabel         PIILabel
+	Weight           float64
+	ContextMatched   bool
+	MatchStart       int
+	MatchEnd         int
+	HasMatchPosition bool
 }

@@ -246,19 +246,12 @@ func (r *baseRegexDetector) Detect(ctx context.Context, word string, columnConte
 						}
 					}
 					if label == PIILabel_AdharcardNumber {
-						// Only require Verhoeff checksum when there is no column context
-						// confirming this is an Aadhaar field. When the column name or a
-						// JSON key already says "aadhaar", trust the context and skip the
-						// checksum — this handles real-but-synthetic Aadhaar values that
-						// don't pass Verhoeff (e.g. sequentially generated test data).
-						if !columnContext[PIILabel_AdharcardNumber] {
-							cleaned := strings.NewReplacer(
-								" ", "",
-								"-", "",
-							).Replace(matched)
-							if !verhoeffValid(cleaned) {
-								continue
-							}
+						cleaned := strings.NewReplacer(
+							" ", "",
+							"-", "",
+						).Replace(matched)
+						if !verhoeffValid(cleaned) {
+							continue
 						}
 					}
 					if label == PIILabel_GSTIN {

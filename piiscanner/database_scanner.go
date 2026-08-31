@@ -335,17 +335,16 @@ func (o *DatabasePIIScanOutput) HasFindings() bool {
 }
 
 type PIIDataWithWeightString struct {
-	Label              PIILabel
-	Confidence         string
-	ConfidenceIcon     string
-	Weight             float64
-	Tier               EntityTier // <--- Added during conflict resolver
-	ContextMatched     bool       `json:"-"`
-	ProvenanceResolved bool       `json:"-"`
-	DetectorType       DetectorType
-	DetectorName       string
-	ScanedValueCount   int
-	MatchedCount       int
+	Label            PIILabel
+	Confidence       string
+	ConfidenceIcon   string
+	Weight           float64
+	Tier             EntityTier // <--- Added during conflict resolver
+	ContextMatched   bool       `json:"-"`
+	DetectorType     DetectorType
+	DetectorName     string
+	ScanedValueCount int
+	MatchedCount     int
 }
 
 func NewPIIDataWithWeightString(label PIILabel, Weight float64, detectorType DetectorType, detectorName string) *PIIDataWithWeightString {
@@ -460,7 +459,6 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 
 					piiDataWithWeight := NewPIIDataWithWeightString(label, finalWeight, DetectorType_ValueDetector, detector)
 					piiDataWithWeight.ContextMatched = pii.ContextMatched
-					piiDataWithWeight.ProvenanceResolved = pii.ProvenanceResolved
 					piiDataWithWeight.SetScanedValueAndMatchCount(pii.Count, count)
 					output.Data[table.TableName][columnName] = append(output.Data[table.TableName][columnName], *piiDataWithWeight)
 				}
@@ -478,7 +476,6 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 		// Primary Winner Suppression & Conflict Resolution for Table:
 		// Compute the dominant domain using all High/Medium findings across the entire table
 		dominantDomain := getTableDominantDomain(output.Data[table.TableName])
-		resolver := NewConflictResolver()
 
 		for columnName, piiMap := range table.PiiDataMap {
 			hasColumnMatch := false
@@ -488,9 +485,7 @@ func (d *databasePiiScanner) GetResults() (*DatabasePIIScanOutput, error) {
 					break
 				}
 			}
-			output.Data[table.TableName][columnName] = resolver.ResolveColumnConflicts(
-				table.TableName,
-				columnName,
+			output.Data[table.TableName][columnName] = ResolveConflicts(
 				hasColumnMatch,
 				dominantDomain,
 				output.Data[table.TableName][columnName],

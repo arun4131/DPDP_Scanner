@@ -46,6 +46,35 @@ func TestLogicalValuePrefersContextualAadhaarOverUAN(t *testing.T) {
 	assertOnlyLabel(t, resolved, PIILabel_AdharcardNumber)
 }
 
+func TestUnknownAadhaarPrefersTierOneOverUAN(t *testing.T) {
+	detector := NewRegexValueDetector()
+	if err := detector.Init(); err != nil {
+		t.Fatalf("initialize regex detector: %v", err)
+	}
+
+	value := "234567890107"
+	raw, err := detector.Detect(context.Background(), value, nil)
+	if err != nil {
+		t.Fatalf("detect raw candidates: %v", err)
+	}
+	if !containsPIILabel(raw, PIILabel_AdharcardNumber) || !containsPIILabel(raw, PIILabel_UAN) {
+		t.Fatalf("fixture must produce Aadhaar and UAN candidates: %#v", raw)
+	}
+
+	resolved, err := detectFieldValue(
+		context.Background(),
+		detector,
+		value,
+		nil,
+		true,
+	)
+	if err != nil {
+		t.Fatalf("resolve unknown Aadhaar value: %v", err)
+	}
+
+	assertOnlyLabel(t, resolved, PIILabel_AdharcardNumber)
+}
+
 func TestLogicalValueKeepsNonOverlappingEmailAndPhone(t *testing.T) {
 	detector := NewRegexValueDetector()
 	if err := detector.Init(); err != nil {

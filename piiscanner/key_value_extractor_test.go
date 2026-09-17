@@ -67,6 +67,20 @@ func TestPreprocessAndExtractKV(t *testing.T) {
 				{Key: "pan", Value: "ABCDE1234F"},
 			},
 		},
+		{
+			name:      "complete MAC remains a scalar value",
+			input:     `02:42:ac:11:00:01`,
+			processed: `02:42:ac:11:00:01`,
+			want:      nil,
+		},
+		{
+			name:      "MAC inside a key value field is extracted",
+			input:     `mac:02:42:ac:11:00:01`,
+			processed: `mac:02:42:ac:11:00:01`,
+			want: []KeyValuePair{
+				{Key: "mac", Value: "02:42:ac:11:00:01"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

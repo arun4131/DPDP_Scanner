@@ -198,11 +198,29 @@ func detectFieldValue(
 		}
 	}
 
+	if len(columnContext) == 0 {
+		reduceUnknownColumnWeights(labels)
+	}
+
 	if isUnstructuredText {
 		return resolveOccurrenceConflicts(labels), nil
 	}
 
 	return resolveLogicalField(labels), nil
+}
+
+func reduceUnknownColumnWeights(labels []PiiLabelWithWeight) {
+	for index := range labels {
+		tier := GetEntityTier(labels[index].PIILabel)
+
+		if tier != Tier2 && tier != Tier3 {
+			continue
+		}
+
+		if labels[index].Weight >= 0.70 {
+			labels[index].Weight = 0.69
+		}
+	}
 }
 
 func detectLogicalValue(

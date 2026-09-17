@@ -2,166 +2,78 @@ package piiscanner
 
 import "sort"
 
-const (
-	highConfidenceWeight   = 0.70
-	mediumConfidenceWeight = 0.69
-)
+func ResolveConflicts(hascolumnmatch bool, Tabledomain Domain, candidates []PIIDataWithWeightString) []PIIDataWithWeightString {
 
-// ResolveConflicts filters the candidates and returns the final results.
-func ResolveConflicts(
-	hasColumnMatch bool,
-	dominantDomain Domain,
-	candidates []PIIDataWithWeightString,
-) []PIIDataWithWeightString {
-	candidates = filterCandidates(
-		candidates,
-		hasColumnMatch,
-		dominantDomain,
-	)
-
-	if len(candidates) == 0 {
-		return nil
-	}
-
-	sortCandidates(candidates)
-
-	return selectResults(candidates, hasColumnMatch)
-}
-
-// filterCandidates applies noise reduction when context is unavailable.
-func filterCandidates(
-	candidates []PIIDataWithWeightString,
-	hasColumnMatch bool,
-	dominantDomain Domain,
-) []PIIDataWithWeightString {
-	filtered := make(
-		[]PIIDataWithWeightString,
-		0,
-		len(candidates),
-	)
+	filtered := []PIIDataWithWeightString{}
 
 	for _, candidate := range candidates {
 		if candidate.Tier == "" {
 			candidate.Tier = GetEntityTier(candidate.Label)
 		}
 
-		hasContext := hasColumnMatch ||
-			candidate.ContextMatched
+		// if column name does not match and it also not matched inside documents
+		if !hascolumnmatch && !candidate.ContextMatched {
+			// reduce weight of tier2 , 3 entities.
+			if candidate.Tier == Tier2 || candidate.Tier == Tier3 {
+				if candidate.Weight >= 0.70 {
+					candidate.Weight = 0.69
+					candidate.Confidence = "Medium"
+					candidate.ConfidenceIcon = "🟡"
+				}
+			}
 
-		if !hasContext {
-			candidate = confidenceReduction(candidate)
+			// apply domain gating.
+			if candidate.Tier == Tier3 {
+				candidateDomain := EntityDomainMap[candidate.Label]
 
-			if !domainGating(candidate, dominantDomain) {
-				continue
+				if candidateDomain == "" ||
+					Tabledomain == "" ||
+					candidateDomain != Tabledomain {
+					continue
+				}
 			}
 		}
 
 		filtered = append(filtered, candidate)
 	}
 
-	return filtered
-}
+	sortingTheCandidates(filtered)
 
-// confidenceReduction prevents generic patterns from becoming High confidence.
-func confidenceReduction(
-	candidate PIIDataWithWeightString,
-) PIIDataWithWeightString {
-	isGenericTier := candidate.Tier == Tier2 || candidate.Tier == Tier3
-
-	if isGenericTier &&
-		candidate.Weight >= highConfidenceWeight {
-		candidate.Weight = mediumConfidenceWeight
-		candidate.Confidence = "Medium"
-		candidate.ConfidenceIcon = "🟡"
+	// if only column name is not matching then return filtered.
+	if !hascolumnmatch {
+		return filtered
 	}
 
-	return candidate
-}
+	finalResults := []PIIDataWithWeightString{}
 
-// domainGating checks whether a Tier 3 finding belongs to the table domain.
-func domainGating(
-	candidate PIIDataWithWeightString,
-	dominantDomain Domain,
-) bool {
-	if candidate.Tier != Tier3 {
-		return true
+	for _, detectorType := range []DetectorType{DetectorType_ColumnDetector, DetectorType_ValueDetector} {
+		for _, candidate := range filtered {
+			if candidate.DetectorType == detectorType {
+				finalResults = append(finalResults, candidate)
+				break
+			}
+		}
 	}
 
-	candidateDomain := EntityDomainMap[candidate.Label]
-
-	if candidateDomain == "" ||candidateDomain == DomainPersonal {
-		return true
-	}
-
-	return dominantDomain != "" && candidateDomain == dominantDomain
+	return finalResults
 }
 
-// sortCandidates places the strongest candidate first.
-func sortCandidates(
-	candidates []PIIDataWithWeightString,
-) {
+// sorts the candidates
+func sortingTheCandidates(candidates []PIIDataWithWeightString) {
 	sort.Slice(candidates, func(i, j int) bool {
-		first := candidates[i]
-		second := candidates[j]
-
-		if first.Weight != second.Weight {
-			return first.Weight > second.Weight
-		}
-
-		if first.ContextMatched != second.ContextMatched {
-			return first.ContextMatched
-		}
-
-		return first.Label < second.Label
+		return sorting(candidates[i], candidates[j])
 	})
 }
 
-// selectResults handles normal columns and container columns separately.
-func selectResults(
-	candidates []PIIDataWithWeightString,
-	hasColumnMatch bool,
-) []PIIDataWithWeightString {
-	var results []PIIDataWithWeightString
-
-	detectorTypes := []DetectorType{
-		DetectorType_ColumnDetector,
-		DetectorType_ValueDetector,
+// sorts two elements.
+func sorting(first PIIDataWithWeightString, second PIIDataWithWeightString) bool {
+	if first.Weight != second.Weight {
+		return first.Weight > second.Weight
 	}
 
-	for _, detectorType := range detectorTypes {
-		group := candidatesForDetector(
-			candidates,
-			detectorType,
-		)
-
-		if len(group) == 0 {
-			continue
-		}
-
-		if hasColumnMatch {
-			// A normal column contains one logical field.
-			results = append(results, group[0])
-			continue
-		}
-
-		// Document and unknown columns were already resolved field by field.
-		results = append(results, group...)
+	if first.ContextMatched != second.ContextMatched {
+		return first.ContextMatched
 	}
 
-	return results
-}
-
-func candidatesForDetector(
-	candidates []PIIDataWithWeightString,
-	detectorType DetectorType,
-) []PIIDataWithWeightString {
-	var matching []PIIDataWithWeightString
-
-	for _, candidate := range candidates {
-		if candidate.DetectorType == detectorType {
-			matching = append(matching, candidate)
-		}
-	}
-
-	return matching
+	return first.Label < second.Label
 }

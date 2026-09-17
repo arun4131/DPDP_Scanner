@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"regexp"
 	"sort"
@@ -80,12 +81,24 @@ func PreprocessAndExtractKV(text string) (string, []KeyValuePair) {
 	// are deliberately permissive and can misread valid structured content.
 	if !jsonParsed && !xmlParsed && !queryParsed {
 		extractJSONFallback(trimmed, collector)
-		if len(collector.pairs) == 0 {
+		if len(collector.pairs) == 0 && !isNetworkValue(trimmed) {
 			extractTextFallback(trimmed, collector)
 		}
 	}
 
 	return processed, collector.pairs
+}
+
+func isNetworkValue(value string) bool {
+	if net.ParseIP(value) != nil {
+		return true
+	}
+
+	if _, err := net.ParseMAC(value); err == nil {
+		return true
+	}
+
+	return false
 }
 
 // buildLogicalFields returns the fields and whether document extraction worked.

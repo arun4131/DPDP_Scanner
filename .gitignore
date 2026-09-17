@@ -72,4 +72,6 @@ kshield_pii_report.html
 
 .gitattributes
 
-scan_results/
+scan_results/dpdpscanner
+dpdpascanner_test_build
+main
